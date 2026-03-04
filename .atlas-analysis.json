@@ -100,7 +100,7 @@
     "GetArticleByIdUseCase.getArticleById(articleId)",
     "ArticlesViewModel.fetchArticles(query, reload, loadMore)",
     "ArticlesViewModel.onSearchQueryChanged(query)",
-    "ArticleDetailsViewModel.getArticleDetails(articleId)",
+    "ArticleDetailsViewModel.fetchArticleById(id, reload)",
     "PaginationManager.getCurrentOffset()",
     "PaginationManager.updatePagination(paginationDto)",
     "Resource.Success<T>(data)",
