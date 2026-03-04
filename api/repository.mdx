@@ -1,0 +1,172 @@
+---
+title: 'ArticleRepository'
+description: 'Repository interface for accessing article data'
+---
+
+## Overview
+
+The `ArticleRepository` defines the contract for accessing article data in the Space Flight News app. It provides methods to fetch articles with optional filtering and retrieve individual article details.
+
+**Package:** `com.bsvillarraga.spaceflightnews.domain.repository`
+
+**Implementation:** [ArticleRepositoryImpl](/api/repository#implementation)
+
+## Interface
+
+```kotlin
+interface ArticleRepository {
+    suspend fun getArticles(query: String? = null): Resource<List<Article>>
+    suspend fun getArticleById(articleId: Long): Resource<ArticleDetail>
+}
+```
+
+---
+
+## Methods
+
+### getArticles
+
+Retrieves a list of articles from the API with optional search filtering.
+
+```kotlin
+suspend fun getArticles(
+    query: String? = null
+): Resource<List<Article>>
+```
+
+<ParamField path="query" type="String?" default="null">
+  Optional search query to filter articles by title, summary, or content
+</ParamField>
+
+<ResponseField name="return" type="Resource<List<Article>>">
+  A Resource wrapper containing either:
+  - `Resource.Success<List<Article>>` - List of articles matching the query
+  - `Resource.Error` - Error information including error code and message
+</ResponseField>
+
+#### Example Usage
+
+```kotlin
+class ArticleViewModel @Inject constructor(
+    private val repository: ArticleRepository
+) : ViewModel() {
+    
+    fun loadArticles(searchQuery: String? = null) {
+        viewModelScope.launch {
+            when (val result = repository.getArticles(searchQuery)) {
+                is Resource.Success -> {
+                    val articles = result.data
+                    // Update UI with articles
+                }
+                is Resource.Error -> {
+                    // Handle error
+                    val errorMessage = result.message
+                }
+            }
+        }
+    }
+}
+```
+
+---
+
+### getArticleById
+
+Retrieves detailed information for a specific article by its unique identifier.
+
+```kotlin
+suspend fun getArticleById(articleId: Long): Resource<ArticleDetail>
+```
+
+<ParamField path="articleId" type="Long" required>
+  The unique identifier of the article to retrieve
+</ParamField>
+
+<ResponseField name="return" type="Resource<ArticleDetail>">
+  A Resource wrapper containing either:
+  - `Resource.Success<ArticleDetail>` - Complete article details including authors, summary, and metadata
+  - `Resource.Error` - Error information if the article is not found or request fails
+</ResponseField>
+
+#### Example Usage
+
+```kotlin
+class ArticleDetailViewModel @Inject constructor(
+    private val repository: ArticleRepository
+) : ViewModel() {
+    
+    fun loadArticleDetail(articleId: Long) {
+        viewModelScope.launch {
+            when (val result = repository.getArticleById(articleId)) {
+                is Resource.Success -> {
+                    val article = result.data
+                    // Display article details
+                }
+                is Resource.Error -> {
+                    // Show error message
+                    Log.e(TAG, "Error: ${result.message}")
+                }
+            }
+        }
+    }
+}
+```
+
+---
+
+## Implementation
+
+### ArticleRepositoryImpl
+
+**Package:** `com.bsvillarraga.spaceflightnews.data.repository`
+
+**Source:** `ArticleRepositoryImpl.kt`
+
+The implementation uses:
+- **ArticlesApiClient** - Retrofit client for API calls
+- **ApiHelper** - Safe API call handling with error management
+- **PaginationManager** - Manages pagination state and offsets
+
+```kotlin
+class ArticleRepositoryImpl @Inject constructor(
+    private val api: ArticlesApiClient,
+    private val apiHelper: ApiHelper,
+    private val paginationManager: PaginationManager
+) : ArticleRepository
+```
+
+#### Key Features
+
+- **Coroutine Support**: All methods are suspend functions running on `Dispatchers.IO`
+- **Error Handling**: Wraps API responses in `Resource` for consistent error handling
+- **Pagination**: Automatically manages pagination using `PaginationManager`
+- **Data Mapping**: Converts DTOs to domain models using mapper functions
+
+#### Dependency Injection
+
+The repository is provided through Hilt dependency injection in `NetworkModule`:
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object NetworkModule {
+    
+    @Provides
+    @Singleton
+    fun provideArticleRepository(
+        api: ArticlesApiClient,
+        apiHelper: ApiHelper,
+        paginationManager: PaginationManager
+    ): ArticleRepository {
+        return ArticleRepositoryImpl(api, apiHelper, paginationManager)
+    }
+}
+```
+
+---
+
+## Related
+
+- [ArticlesApiClient](/api/api-client) - HTTP client interface
+- [Data Models](/api/models) - DTO and domain model definitions
+- [Resource Class](/api/resource) - Result wrapper for success/error states

@@ -1,0 +1,112 @@
+---
+title: Resource
+description: Sealed class for representing operation states
+---
+
+## Overview
+
+`Resource` is a sealed class that represents the state of an operation. It provides a type-safe way to handle different states like success, error, and loading in your application.
+
+**Package:** `com.bsvillarraga.spaceflightnews.core.common`
+
+**Source:** [Resource.kt:7](~/workspace/source/app/src/main/java/com/bsvillarraga/spaceflightnews/core/common/Resource.kt:7)
+
+## Type Parameter
+
+<ParamField path="T" type="out T">
+  The type of data that the resource contains
+</ParamField>
+
+## States
+
+### Success
+
+Represents a successful operation.
+
+```kotlin
+data class Success<out T>(val data: T?) : Resource<T>()
+```
+
+<ParamField path="data" type="T?">
+  The data returned by the successful operation. Can be null.
+</ParamField>
+
+**Example:**
+```kotlin
+val result = Resource.Success(data = articlesList)
+```
+
+### Error
+
+Represents a failed operation.
+
+```kotlin
+data class Error<out T>(
+    val code: String?, 
+    val msg: String, 
+    val error: Throwable? = null
+) : Resource<T>()
+```
+
+<ParamField path="code" type="String?">
+  Optional error code identifying the type of error
+</ParamField>
+
+<ParamField path="msg" type="String" required>
+  Human-readable error message
+</ParamField>
+
+<ParamField path="error" type="Throwable?" default="null">
+  Optional throwable for detailed error information
+</ParamField>
+
+**Example:**
+```kotlin
+val result = Resource.Error(
+    code = "404",
+    msg = "Article not found",
+    error = exception
+)
+```
+
+### Loading
+
+Represents an operation in progress.
+
+```kotlin
+data class Loading<out T>(val data: T? = null) : Resource<T>()
+```
+
+<ParamField path="data" type="T?" default="null">
+  Optional cached or preliminary data that can be shown while loading
+</ParamField>
+
+**Example:**
+```kotlin
+val result = Resource.Loading(data = cachedArticles)
+```
+
+## Usage Example
+
+```kotlin
+when (resource) {
+    is Resource.Success -> {
+        // Handle success
+        resource.data?.let { data ->
+            updateUI(data)
+        }
+    }
+    is Resource.Error -> {
+        // Handle error
+        showError(resource.msg)
+    }
+    is Resource.Loading -> {
+        // Show loading indicator
+        showProgressBar()
+        resource.data?.let { cachedData ->
+            // Optionally show cached data while loading
+            updateUI(cachedData)
+        }
+    }
+}
+```

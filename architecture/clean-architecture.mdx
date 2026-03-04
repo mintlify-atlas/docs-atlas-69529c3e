@@ -1,0 +1,419 @@
+---
+title: Clean Architecture
+description: Detailed explanation of the three-layer clean architecture implementation
+---
+
+The Space Flight News app implements Clean Architecture with three distinct layers, each with specific responsibilities and clear boundaries.
+
+## Architecture Layers
+
+<img
+  src="https://blog.cleancoder.com/uncle-bob/images/2012-08-13-the-clean-architecture/CleanArchitecture.jpg"
+  alt="Clean Architecture Diagram"
+/>
+
+The architecture follows the **Dependency Rule**: dependencies only point inward. Outer layers depend on inner layers, never the reverse.
+
+## Layer Breakdown
+
+### 1. Domain Layer (Core Business Logic)
+
+The domain layer is the innermost layer and contains:
+- Business logic
+- Domain models (entities)
+- Repository interfaces
+- Use cases
+
+<Note>
+The domain layer has **zero dependencies** on Android framework or external libraries. It's pure Kotlin/Java code.
+</Note>
+
+#### Domain Models
+
+Domain models represent business entities:
+
+```kotlin com/bsvillarraga/spaceflightnews/domain/model/Article.kt
+data class Article(
+    val id: Long,
+    val title: String,
+    val imageUrl: String,
+    val newsSite: String,
+    val publishedAt: String
+)
+```
+
+#### Repository Interfaces
+
+The domain layer defines what data operations are needed, not how they're implemented:
+
+```kotlin com/bsvillarraga/spaceflightnews/domain/repository/ArticleRepository.kt
+interface ArticleRepository {
+    suspend fun getArticles(
+        query: String? = null
+    ): Resource<List<Article>>
+
+    suspend fun getArticleById(articleId: Long): Resource<ArticleDetail>
+}
+```
+
+<Warning>
+Repository interfaces belong in the domain layer, while implementations belong in the data layer. This ensures the domain layer doesn't depend on data sources.
+</Warning>
+
+#### Use Cases
+
+Use cases encapsulate single business operations:
+
+```kotlin com/bsvillarraga/spaceflightnews/domain/usecase/GetArticlesUseCase.kt
+class GetArticlesUseCase @Inject constructor(
+    private val repository: ArticleRepository
+) {
+    suspend fun getArticles(query: String? = null): Resource<List<Article>> {
+        return repository.getArticles(query)
+    }
+}
+```
+
+<Accordion title="Why use cases for simple operations?">
+While this use case seems like a simple pass-through, it provides:
+- A single entry point for this business operation
+- A place to add validation or business rules
+- Easy mocking for testing the presentation layer
+- Future extensibility without changing the repository interface
+
+For example, you could add caching logic, combine multiple repository calls, or add analytics tracking without modifying the ViewModel or Repository.
+</Accordion>
+
+### 2. Data Layer (Data Management)
+
+The data layer implements repository interfaces and manages data sources:
+- Repository implementations
+- API clients (Retrofit)
+- Local database (Room)
+- DTOs (Data Transfer Objects)
+- Data mappers
+
+#### Data Transfer Objects (DTOs)
+
+DTOs represent the API response structure:
+
+```kotlin com/bsvillarraga/spaceflightnews/data/model/ArticleDto.kt
+data class ArticleDto(
+    val id: Long,
+    val title: String,
+    val authors: List<AuthorDto>,
+    val url: String,
+    @SerializedName("image_url")
+    val imageUrl: String,
+    @SerializedName("news_site")
+    val newsSite: String,
+    val summary: String,
+    @SerializedName("published_at")
+    val publishedAt: String,
+    @SerializedName("updated_at")
+    val updatedAt: String,
+    val featured: Boolean,
+    val launches: List<LaunchDto>,
+    val events: List<EventDto>,
+) {
+    fun toArticleDomain(): Article = Article(
+        id = id,
+        title = title,
+        imageUrl = imageUrl,
+        newsSite = newsSite,
+        publishedAt = publishedAt
+    )
+
+    fun toArticleDetailDomain(): ArticleDetail = ArticleDetail(
+        id = id,
+        title = title,
+        authors = authors.map { it.toDomain() },
+        url = url,
+        newsSite = newsSite,
+        imageUrl = imageUrl,
+        summary = summary,
+        publishedAt = publishedAt,
+        updatedAt = updatedAt
+    )
+}
+```
+
+<Note>
+DTOs include mapping functions to convert API responses into domain models, keeping the transformation logic close to the data.
+</Note>
+
+#### Repository Implementation
+
+The repository implementation handles data fetching and transformation:
+
+```kotlin com/bsvillarraga/spaceflightnews/data/repository/ArticleRepositoryImpl.kt:29-58
+class ArticleRepositoryImpl @Inject constructor(
+    private val api: ArticlesApiClient,
+    private val apiHelper: ApiHelper,
+    private val paginationManager: PaginationManager
+) : ArticleRepository {
+
+    override suspend fun getArticles(
+        query: String?
+    ): Resource<List<Article>> {
+        return withContext(Dispatchers.IO) {
+            val response: ApiResponse<PaginationDto> =
+                apiHelper.safeApiCall {
+                    api.getArticles(query, paginationManager.getCurrentOffset())
+                }
+
+            when (response) {
+                is ApiSuccessResponse -> {
+                    val pagination = response.body
+                    paginationManager.updatePagination(pagination)
+                    Resource.Success(pagination.articles.map { it.toArticleDomain() })
+                }
+
+                is ApiErrorResponse -> Resource.Error(response.code, response.msg, response.error)
+            }
+        }
+    }
+    
+    // ... getArticleById implementation
+}
+```
+
+<AccordionGroup>
+  <Accordion title="Why separate DTOs from Domain Models?">
+    **Benefits of separation:**
+    - API changes don't affect business logic
+    - Domain models contain only what the app needs
+    - DTOs can include serialization annotations
+    - Clear boundary between external and internal data representations
+    
+    **Example:** The API returns `published_at` with snake_case, but the domain model uses `publishedAt` with camelCase.
+  </Accordion>
+  
+  <Accordion title="ApiHelper and Error Handling">
+    The `apiHelper.safeApiCall` wrapper handles:
+    - Network connectivity checks
+    - Exception catching and transformation
+    - Consistent error response format
+    - Timeout handling
+    
+    This centralizes error handling logic instead of repeating it in every repository method.
+  </Accordion>
+</AccordionGroup>
+
+#### API Client
+
+Retrofit interface defines API endpoints:
+
+```kotlin com/bsvillarraga/spaceflightnews/data/remote/articles/ArticlesApiClient.kt
+interface ArticlesApiClient {
+    @GET("v4/articles/")
+    suspend fun getArticles(
+        @Query("search") query: String?,
+        @Query("offset") offset: Int
+    ): PaginationDto
+
+    @GET("v4/articles/{id}")
+    suspend fun getArticleById(
+        @Path("id") articleId: Long
+    ): ArticleDto
+}
+```
+
+### 3. Presentation Layer (UI)
+
+The presentation layer handles UI logic and user interactions:
+- Fragments and Activities
+- ViewModels
+- Adapters
+- UI state management
+
+#### ViewModel
+
+ViewModels coordinate between UI and use cases:
+
+```kotlin com/bsvillarraga/spaceflightnews/presentation/ui/articles/viewmodel/ArticlesViewModel.kt:20-46
+@HiltViewModel
+class ArticlesViewModel @Inject constructor(
+    private val articleUseCase: GetArticlesUseCase
+) : ViewModel() {
+
+    private val _articles = MutableLiveData<Resource<List<Article>>>(Resource.Loading())
+    val articles: LiveData<Resource<List<Article>>> = _articles
+
+    private val _searchQuery = MutableStateFlow("")
+    private val _currentList = mutableListOf<Article>()
+
+    init {
+        observeSearchQuery()
+    }
+
+    private fun observeSearchQuery() {
+        viewModelScope.launch {
+            _searchQuery.debounce(300).distinctUntilChanged().collectLatest { query ->
+                _currentList.clear()
+                fetchArticles(query.ifEmpty { null }, reload = true)
+            }
+        }
+    }
+    
+    // ... other methods
+}
+```
+
+<Note>
+The ViewModel uses **debounce** and **distinctUntilChanged** on the search query to prevent excessive API calls while typing.
+</Note>
+
+#### Fragment (UI)
+
+Fragments observe ViewModel state and render UI:
+
+```kotlin com/bsvillarraga/spaceflightnews/presentation/ui/articles/ArticlesFragment.kt:41-49
+@AndroidEntryPoint
+class ArticlesFragment : Fragment(), MenuProvider {
+    private lateinit var binding: FragmentArticlesBinding
+    private lateinit var adapter: ArticleAdapter
+
+    private var searchView: SearchView? = null
+    private var searchMenuItem: MenuItem? = null
+
+    private val viewModel: ArticlesViewModel by viewModels()
+```
+
+Observing data:
+
+```kotlin com/bsvillarraga/spaceflightnews/presentation/ui/articles/ArticlesFragment.kt:103-116
+private fun observeArticle() {
+    viewModel.articles.observe(viewLifecycleOwner) { resource ->
+        handleResource(resource)
+    }
+}
+
+private fun handleResource(resource: Resource<List<Article>>) {
+    when (resource) {
+        is Resource.Error -> showError()
+        is Resource.Loading -> showLoading()
+        is Resource.Success -> loadData(resource.data)
+    }
+}
+```
+
+<Warning>
+Fragments use the `@AndroidEntryPoint` annotation to enable Hilt dependency injection.
+</Warning>
+
+## Dependency Flow
+
+The dependency graph flows inward:
+
+```
+Fragment/Activity
+    ↓ (depends on)
+ViewModel
+    ↓ (depends on)
+Use Case
+    ↓ (depends on)
+Repository Interface (Domain)
+    ↑ (implemented by)
+Repository Implementation (Data)
+    ↓ (depends on)
+API Client / Database
+```
+
+<Steps>
+  <Step title="Fragment depends on ViewModel">
+    UI obtains ViewModel through Hilt injection
+  </Step>
+  <Step title="ViewModel depends on Use Case">
+    ViewModel receives Use Case via constructor injection
+  </Step>
+  <Step title="Use Case depends on Repository Interface">
+    Use Case works with the interface, not implementation
+  </Step>
+  <Step title="Repository Implementation injected">
+    Hilt provides the implementation at runtime
+  </Step>
+  <Step title="Repository depends on Data Sources">
+    Repository uses API clients and databases
+  </Step>
+</Steps>
+
+## Benefits of This Architecture
+
+<CardGroup cols={2}>
+  <Card title="Testability" icon="vial">
+    Each layer can be tested independently with mocked dependencies
+  </Card>
+  <Card title="Maintainability" icon="wrench">
+    Changes in one layer don't affect others
+  </Card>
+  <Card title="Scalability" icon="chart-line">
+    New features follow the same pattern
+  </Card>
+  <Card title="Separation of Concerns" icon="layer-group">
+    Each class has a single, well-defined responsibility
+  </Card>
+</CardGroup>
+
+## Real-World Example: Fetching Articles
+
+Let's trace a complete flow from user action to UI update:
+
+<Steps>
+  <Step title="User opens the app">
+    `ArticlesFragment` is created and calls `viewModel.fetchArticles()`
+  </Step>
+  
+  <Step title="ViewModel executes Use Case">
+    ```kotlin
+    viewModelScope.launch {
+        handleResult(articleUseCase.getArticles(query), loadMore)
+    }
+    ```
+  </Step>
+  
+  <Step title="Use Case calls Repository">
+    ```kotlin
+    suspend fun getArticles(query: String? = null): Resource<List<Article>> {
+        return repository.getArticles(query)
+    }
+    ```
+  </Step>
+  
+  <Step title="Repository fetches from API">
+    ```kotlin
+    val response = apiHelper.safeApiCall {
+        api.getArticles(query, paginationManager.getCurrentOffset())
+    }
+    ```
+  </Step>
+  
+  <Step title="Repository transforms data">
+    ```kotlin
+    Resource.Success(pagination.articles.map { it.toArticleDomain() })
+    ```
+  </Step>
+  
+  <Step title="ViewModel updates LiveData">
+    ```kotlin
+    _articles.value = Resource.Success(_currentList.toList())
+    ```
+  </Step>
+  
+  <Step title="Fragment observes and updates UI">
+    ```kotlin
+    viewModel.articles.observe(viewLifecycleOwner) { resource ->
+        when (resource) {
+            is Resource.Success -> loadData(resource.data)
+            // ...
+        }
+    }
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+<Card title="Dependency Injection" icon="plug" href="/architecture/dependency-injection">
+  Learn how Dagger Hilt wires all these components together
+</Card>

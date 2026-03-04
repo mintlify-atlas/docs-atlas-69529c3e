@@ -1,0 +1,155 @@
+---
+title: ViewModels
+description: API reference for ViewModels in Space Flight News app
+---
+
+## ArticlesViewModel
+
+`com.bsvillarraga.spaceflightnews.presentation.ui.articles.viewmodel.ArticlesViewModel`
+
+ViewModel responsible for managing article list data and search functionality.
+
+**Injection:** Annotated with `@HiltViewModel`, uses Dagger Hilt for dependency injection.
+
+### Constructor Parameters
+
+- `articleUseCase: GetArticlesUseCase` - Use case for fetching articles from repository
+
+### LiveData Properties
+
+#### articles
+
+```kotlin
+val articles: LiveData<Resource<List<Article>>>
+```
+
+Observable LiveData that emits the current state of articles loading:
+- `Resource.Loading()` - Initial state and during data fetch
+- `Resource.Success(List<Article>)` - Successfully loaded articles
+- `Resource.Error` - Error occurred during fetch
+
+### Methods
+
+#### fetchArticles()
+
+```kotlin
+fun fetchArticles(
+    query: String? = null,
+    reload: Boolean = false,
+    loadMore: Boolean = false
+)
+```
+
+Fetches articles based on search query with support for pagination.
+
+**Parameters:**
+- `query` - Optional search query string. If null, uses current search query
+- `reload` - When true, clears current list and shows loading state
+- `loadMore` - When true, appends new articles to existing list for pagination
+
+**Behavior:**
+- Skips fetch if data already loaded (unless reload or loadMore is true)
+- Updates LiveData with loading state when reloading
+- Executes in viewModelScope coroutine
+
+**Source:** `viewmodel/ArticlesViewModel.kt:55`
+
+#### onSearchQueryChanged()
+
+```kotlin
+fun onSearchQueryChanged(query: String)
+```
+
+Updates the search query, triggering debounced article search.
+
+**Parameters:**
+- `query` - New search query entered by user
+
+**Behavior:**
+- Updates internal StateFlow `_searchQuery`
+- Triggers automatic search after 300ms debounce
+- Clears current article list before new search
+
+**Source:** `viewmodel/ArticlesViewModel.kt:92`
+
+#### onGetSearchQueryChanged()
+
+```kotlin
+fun onGetSearchQueryChanged(): String
+```
+
+Returns the current search query value.
+
+**Returns:** Current search query string
+
+**Source:** `viewmodel/ArticlesViewModel.kt:96`
+
+### Private Methods
+
+#### observeSearchQuery()
+
+Observes search query changes with debouncing (300ms) and distinctUntilChanged to prevent duplicate queries.
+
+**Source:** `viewmodel/ArticlesViewModel.kt:40`
+
+#### handleResult()
+
+```kotlin
+private fun handleResult(
+    result: Resource<List<Article>>,
+    loadMore: Boolean
+)
+```
+
+Processes article fetch results and updates UI state accordingly.
+
+**Source:** `viewmodel/ArticlesViewModel.kt:72`
+
+---
+
+## ArticleDetailsViewModel
+
+`com.bsvillarraga.spaceflightnews.presentation.ui.articles.viewmodel.ArticleDetailsViewModel`
+
+ViewModel for managing single article detail data.
+
+**Injection:** Annotated with `@HiltViewModel`, uses Dagger Hilt for dependency injection.
+
+### Constructor Parameters
+
+- `articleById: GetArticleByIdUseCase` - Use case for fetching article details by ID
+
+### LiveData Properties
+
+#### article
+
+```kotlin
+val article: LiveData<Resource<ArticleDetail>>
+```
+
+Observable LiveData that emits article detail loading state:
+- `Resource.Loading()` - During data fetch
+- `Resource.Success(ArticleDetail)` - Successfully loaded article details
+- `Resource.Error` - Error occurred during fetch
+
+### Methods
+
+#### fetchArticleById()
+
+```kotlin
+fun fetchArticleById(id: Long, reload: Boolean = false)
+```
+
+Fetches article details by ID.
+
+**Parameters:**
+- `id` - Article ID to fetch
+- `reload` - When true, forces reload even if already loaded (useful for error retry)
+
+**Behavior:**
+- Prevents duplicate loads using internal `hasLoaded` flag
+- Sets loading state before fetch
+- Executes in viewModelScope coroutine
+- Marks article as loaded on success
+
+**Source:** `viewmodel/ArticleDetailsViewModel.kt:28`

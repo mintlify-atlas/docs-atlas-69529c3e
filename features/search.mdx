@@ -1,0 +1,323 @@
+---
+title: Search
+description: Learn how the search functionality works with debouncing, text and voice input, and real-time article filtering.
+---
+
+## Overview
+
+The search feature allows users to find space flight news articles by entering text or using voice input. It includes debouncing to optimize API calls and provides real-time filtering of articles.
+
+## Key Features
+
+- Text-based search with SearchView
+- Voice search using Android's speech recognizer
+- Search query debouncing (300ms)
+- Real-time article filtering
+- Search state persistence
+
+## Search UI Implementation
+
+The search functionality is implemented in `ArticlesFragment` using a menu provider.
+
+### Menu Setup
+
+```kotlin ArticlesFragment.kt:70-74
+private fun setupSearch() {
+    val menuHost = requireActivity()
+    menuHost.addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
+}
+```
+
+### Creating Search Menu
+
+```kotlin ArticlesFragment.kt:177-192
+override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+    menuInflater.inflate(R.menu.menu_search, menu)
+
+    searchMenuItem = menu.findItem(R.id.action_search)
+    searchView = searchMenuItem?.actionView as SearchView
+    searchView?.queryHint = "Buscar..."
+
+    searchView?.queryTextListener(
+        onSubmit = { query ->
+            viewModel.onSearchQueryChanged(query)
+        },
+        onTextChanged = { query ->
+            viewModel.onSearchQueryChanged(query ?: "")
+        }
+    )
+}
+```
+
+<Note>
+The SearchView uses a custom extension function `queryTextListener` to handle both text submission and real-time text changes.
+</Note>
+
+## SearchView Extension
+
+A custom extension simplifies SearchView listener setup.
+
+```kotlin SearchViewExtensions.kt:8-24
+fun SearchView.queryTextListener(onSubmit: (String) -> Unit, onTextChanged: (String?) -> Unit) {
+    setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+        override fun onQueryTextSubmit(query: String?): Boolean {
+            query?.let {
+                onSubmit.invoke(query)
+            }
+            return true
+        }
+
+        override fun onQueryTextChange(query: String?): Boolean {
+            if (query.isNullOrEmpty()) {
+                onTextChanged.invoke(query)
+            }
+            return true
+        }
+    })
+}
+```
+
+## ViewModel Search Logic
+
+The `ArticlesViewModel` handles search queries with debouncing and state management.
+
+### Search State
+
+```kotlin ArticlesViewModel.kt:29-30
+private val _searchQuery = MutableStateFlow("")
+private val _currentList = mutableListOf<Article>()
+```
+
+### Search Query Observer with Debouncing
+
+```kotlin ArticlesViewModel.kt:40-47
+private fun observeSearchQuery() {
+    viewModelScope.launch {
+        _searchQuery.debounce(300).distinctUntilChanged().collectLatest { query ->
+            _currentList.clear()
+            fetchArticles(query.ifEmpty { null }, reload = true)
+        }
+    }
+}
+```
+
+<Info>
+**Debouncing Benefits:**
+- Waits 300ms after the user stops typing
+- Reduces unnecessary API calls
+- Improves app performance and user experience
+- Uses `distinctUntilChanged()` to avoid duplicate queries
+</Info>
+
+### Updating Search Query
+
+```kotlin ArticlesViewModel.kt:92-94
+fun onSearchQueryChanged(query: String) {
+    _searchQuery.value = query
+}
+```
+
+### Fetching Articles with Query
+
+```kotlin ArticlesViewModel.kt:55-65
+fun fetchArticles(query: String? = null, reload: Boolean = false, loadMore: Boolean = false) {
+    if (!reload && !loadMore && _currentList.isNotEmpty()) return
+
+    if (reload) {
+        _articles.value = Resource.Loading()
+    }
+
+    viewModelScope.launch {
+        handleResult(articleUseCase.getArticles(query ?: onGetSearchQueryChanged()), loadMore)
+    }
+}
+```
+
+## Voice Search
+
+The app supports voice input for searching articles.
+
+### Menu Item Handler
+
+```kotlin ArticlesFragment.kt:194-203
+override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+    return when (menuItem.itemId) {
+        R.id.action_voice_search -> {
+            requestRecordAudio()
+            true
+        }
+
+        else -> false
+    }
+}
+```
+
+### Permission Request
+
+```kotlin ArticlesFragment.kt:206-217
+private fun requestRecordAudio() {
+    PermissionChainManager(permissionHandler)
+        .addPermission(
+            PermissionRequest(
+                type = PermissionType.RECORD_AUDIO,
+                onGranted = {
+                    startVoiceSearch()
+                }
+            )
+        )
+        .execute()
+}
+```
+
+<Warning>
+Voice search requires the `RECORD_AUDIO` permission. The app requests this permission before starting voice recognition.
+</Warning>
+
+### Starting Voice Recognition
+
+```kotlin ArticlesFragment.kt:220-237
+private fun startVoiceSearch() {
+    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        )
+        putExtra(RecognizerIntent.EXTRA_PROMPT, "Di algo...")
+    }
+    try {
+        voiceSearchLauncher.launch(intent)
+    } catch (e: ActivityNotFoundException) {
+        Toast.makeText(
+            requireContext(),
+            "Tu dispositivo no admite búsqueda por voz",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+}
+```
+
+### Handling Voice Search Results
+
+```kotlin ArticlesFragment.kt:240-252
+private val voiceSearchLauncher =
+    registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data: Intent? = result.data
+            val results = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val spokenText = results?.get(0) ?: return@registerForActivityResult
+
+            Handler(Looper.getMainLooper()).postDelayed({
+                searchMenuItem?.expandActionView()
+                searchView?.setQuery(spokenText, true)
+            }, 200)
+        }
+    }
+```
+
+<Tip>
+The voice search result is automatically populated into the SearchView with a small delay (200ms) to ensure smooth UI transitions.
+</Tip>
+
+## Repository Search Implementation
+
+The repository passes the search query to the API.
+
+```kotlin ArticleRepositoryImpl.kt:39-58
+override suspend fun getArticles(
+    query: String?
+): Resource<List<Article>> {
+    return withContext(Dispatchers.IO) {
+        val response: ApiResponse<PaginationDto> =
+            apiHelper.safeApiCall {
+                api.getArticles(query, paginationManager.getCurrentOffset())
+            }
+
+        when (response) {
+            is ApiSuccessResponse -> {
+                val pagination = response.body
+                paginationManager.updatePagination(pagination)
+                Resource.Success(pagination.articles.map { it.toArticleDomain() })
+            }
+
+            is ApiErrorResponse -> Resource.Error(response.code, response.msg, response.error)
+        }
+    }
+}
+```
+
+## Search Flow Diagram
+
+<Steps>
+  <Step title="User Input">
+    User enters text in SearchView or uses voice search
+  </Step>
+  <Step title="Query Update">
+    `onSearchQueryChanged()` updates the StateFlow
+  </Step>
+  <Step title="Debouncing">
+    Flow waits 300ms for user to finish typing
+  </Step>
+  <Step title="Distinct Check">
+    Ensures query has actually changed
+  </Step>
+  <Step title="API Call">
+    `fetchArticles()` called with search query
+  </Step>
+  <Step title="Update UI">
+    Article list updated with filtered results
+  </Step>
+</Steps>
+
+## Search Behavior
+
+### Empty Search Query
+
+When the search query is empty, all articles are displayed.
+
+```kotlin ArticlesViewModel.kt:42-44
+_searchQuery.debounce(300).distinctUntilChanged().collectLatest { query ->
+    _currentList.clear()
+    fetchArticles(query.ifEmpty { null }, reload = true)
+}
+```
+
+### Clear Search
+
+Clearing the search query resets the article list to show all articles.
+
+```kotlin SearchViewExtensions.kt:17-21
+override fun onQueryTextChange(query: String?): Boolean {
+    if (query.isNullOrEmpty()) {
+        onTextChanged.invoke(query)
+    }
+    return true
+}
+```
+
+## Performance Optimization
+
+<CardGroup cols={2}>
+  <Card title="Debouncing" icon="clock">
+    300ms delay prevents excessive API calls while typing
+  </Card>
+  <Card title="DistinctUntilChanged" icon="filter">
+    Ignores duplicate consecutive queries
+  </Card>
+  <Card title="Coroutines" icon="bolt">
+    Non-blocking asynchronous search operations
+  </Card>
+  <Card title="StateFlow" icon="water">
+    Efficient state management with reactive streams
+  </Card>
+</CardGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Article List" icon="list" href="/features/article-list">
+    View search results in the article list
+  </Card>
+  <Card title="Pagination" icon="list" href="/features/pagination">
+    Load more search results
+  </Card>
+</CardGroup>

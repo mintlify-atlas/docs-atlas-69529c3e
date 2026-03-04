@@ -1,0 +1,173 @@
+---
+title: Domain Models
+description: Core domain models for the Space Flight News Android app
+---
+
+Domain models represent the core business entities in the application's domain layer.
+
+## Article
+
+Represents a summary view of a space flight news article. Used in list views and search results.
+
+```kotlin
+data class Article(
+    val id: Long,
+    val title: String,
+    val imageUrl: String,
+    val newsSite: String,
+    val publishedAt: String
+)
+```
+
+### Properties
+
+<ResponseField name="id" type="Long" required>
+  Unique identifier for the article.
+</ResponseField>
+
+<ResponseField name="title" type="String" required>
+  The title of the article.
+</ResponseField>
+
+<ResponseField name="imageUrl" type="String" required>
+  URL of the article's featured image.
+</ResponseField>
+
+<ResponseField name="newsSite" type="String" required>
+  Name of the news site that published the article (e.g., "Space.com", "NASA").
+</ResponseField>
+
+<ResponseField name="publishedAt" type="String" required>
+  Publication date and time of the article in ISO 8601 format.
+</ResponseField>
+
+### Example
+
+```kotlin
+val article = Article(
+    id = 12345L,
+    title = "NASA Launches New Mars Rover",
+    imageUrl = "https://example.com/images/mars-rover.jpg",
+    newsSite = "NASA",
+    publishedAt = "2024-03-15T10:30:00Z"
+)
+```
+
+---
+
+## ArticleDetail
+
+Represents the complete details of a space flight news article. Used in detail views with full article information.
+
+```kotlin
+data class ArticleDetail(
+    val id: Long,
+    val title: String,
+    val authors: List<Author>,
+    val url: String,
+    val newsSite: String,
+    val imageUrl: String,
+    val summary: String,
+    val publishedAt: String,
+    val updatedAt: String
+)
+```
+
+### Properties
+
+<ResponseField name="id" type="Long" required>
+  Unique identifier for the article.
+</ResponseField>
+
+<ResponseField name="title" type="String" required>
+  The title of the article.
+</ResponseField>
+
+<ResponseField name="authors" type="List<Author>" required>
+  List of authors who wrote the article. See [Author](#author) for details.
+</ResponseField>
+
+<ResponseField name="url" type="String" required>
+  URL to the full article on the original news site.
+</ResponseField>
+
+<ResponseField name="newsSite" type="String" required>
+  Name of the news site that published the article.
+</ResponseField>
+
+<ResponseField name="imageUrl" type="String" required>
+  URL of the article's featured image.
+</ResponseField>
+
+<ResponseField name="summary" type="String" required>
+  Brief summary or excerpt of the article content.
+</ResponseField>
+
+<ResponseField name="publishedAt" type="String" required>
+  Publication date and time of the article in ISO 8601 format.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="String" required>
+  Last update date and time of the article in ISO 8601 format.
+</ResponseField>
+
+### Example
+
+```kotlin
+val articleDetail = ArticleDetail(
+    id = 12345L,
+    title = "NASA Launches New Mars Rover",
+    authors = listOf(
+        Author(name = "John Doe"),
+        Author(name = "Jane Smith")
+    ),
+    url = "https://www.nasa.gov/article/mars-rover-launch",
+    newsSite = "NASA",
+    imageUrl = "https://example.com/images/mars-rover.jpg",
+    summary = "NASA successfully launched its newest Mars rover today...",
+    publishedAt = "2024-03-15T10:30:00Z",
+    updatedAt = "2024-03-15T14:20:00Z"
+)
+```
+
+---
+
+## Author
+
+Represents an author of a space flight news article.
+
+```kotlin
+data class Author(
+    val name: String
+)
+```
+
+### Properties
+
+<ResponseField name="name" type="String" required>
+  The full name of the author.
+</ResponseField>
+
+### Example
+
+```kotlin
+val author = Author(
+    name = "Dr. Emily Johnson"
+)
+```
+
+### Usage
+
+The `Author` model is typically used as part of the `ArticleDetail` model to represent article attribution:
+
+```kotlin
+val authors = listOf(
+    Author(name = "Dr. Emily Johnson"),
+    Author(name = "Michael Chen")
+)
+
+val article = ArticleDetail(
+    // ... other properties
+    authors = authors
+)
+```

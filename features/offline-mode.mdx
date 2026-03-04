@@ -1,0 +1,384 @@
+---
+title: Offline Mode
+description: Learn how the app implements offline caching using Room database for seamless article access without internet.
+---
+
+## Overview
+
+The offline mode feature enables users to access previously loaded articles even without an internet connection. It uses Room database to cache pagination state and provides a foundation for caching article data.
+
+## Architecture
+
+The app uses Room as the local persistence layer to store data that can be accessed offline.
+
+<Info>
+**Room Database Components:**
+- Database class that extends RoomDatabase
+- DAOs (Data Access Objects) for database operations
+- Entities representing database tables
+</Info>
+
+## Database Configuration
+
+The `SpaceFlightNewsDb` class defines the Room database structure.
+
+```kotlin SpaceFlightNewsDb.kt:16-20
+@Database(entities = [PaginationEntity::class], version = 1)
+abstract class SpaceFlightNewsDb: RoomDatabase() {
+    abstract fun paginationDao(): PaginationDao
+}
+```
+
+<Note>
+The database currently stores pagination state. The architecture can be extended to cache article content for full offline support.
+</Note>
+
+## Dependency Injection
+
+The database is configured through Dagger Hilt for dependency injection.
+
+<CodeGroup>
+```kotlin Database Module
+@Module
+@InstallIn(SingletonComponent::class)
+object RoomModule {
+    @Provides
+    @Singleton
+    fun provideDatabase(@ApplicationContext context: Context): SpaceFlightNewsDb {
+        return Room.databaseBuilder(
+            context,
+            SpaceFlightNewsDb::class.java,
+            "space_flight_news_db"
+        ).build()
+    }
+
+    @Provides
+    fun providePaginationDao(database: SpaceFlightNewsDb): PaginationDao {
+        return database.paginationDao()
+    }
+}
+```
+</CodeGroup>
+
+## Pagination State Caching
+
+The app caches pagination state to remember the user's scroll position.
+
+### PaginationEntity
+
+This entity stores the current pagination state in the database.
+
+```kotlin
+@Entity(tableName = "pagination")
+data class PaginationEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
+    val count: Int,
+    val offset: Int?
+)
+```
+
+### PaginationDao
+
+The DAO provides methods to interact with pagination data.
+
+```kotlin
+@Dao
+interface PaginationDao {
+    @Query("SELECT * FROM pagination LIMIT 1")
+    suspend fun getPagination(): PaginationEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPagination(pagination: PaginationEntity)
+
+    @Query("DELETE FROM pagination")
+    suspend fun deletePagination()
+}
+```
+
+## PaginationManager Integration
+
+The `PaginationManager` coordinates between the API and database.
+
+### Reading Cached Offset
+
+```kotlin PaginationManager.kt:17-19
+suspend fun getCurrentOffset(): Int? {
+    return paginationDao.getPagination()?.offset
+}
+```
+
+<Tip>
+When the app starts offline, it can retrieve the last known offset from the database.
+</Tip>
+
+### Writing Pagination State
+
+```kotlin PaginationManager.kt:24-37
+suspend fun updatePagination(paginationDto: PaginationDto) {
+    val offset = extractOffset(paginationDto.next)
+
+    paginationDao.deletePagination()
+
+    if (paginationDto.articles.isNotEmpty()) {
+        paginationDao.insertPagination(
+            PaginationEntity(
+                count = paginationDto.count,
+                offset = offset
+            )
+        )
+    }
+}
+```
+
+## Repository Pattern
+
+The repository abstracts data sources and can be extended for offline support.
+
+### Current Implementation
+
+```kotlin ArticleRepositoryImpl.kt:39-58
+override suspend fun getArticles(
+    query: String?
+): Resource<List<Article>> {
+    return withContext(Dispatchers.IO) {
+        val response: ApiResponse<PaginationDto> =
+            apiHelper.safeApiCall {
+                api.getArticles(query, paginationManager.getCurrentOffset())
+            }
+
+        when (response) {
+            is ApiSuccessResponse -> {
+                val pagination = response.body
+                paginationManager.updatePagination(pagination)
+                Resource.Success(pagination.articles.map { it.toArticleDomain() })
+            }
+
+            is ApiErrorResponse -> Resource.Error(response.code, response.msg, response.error)
+        }
+    }
+}
+```
+
+### Extending for Full Offline Support
+
+To implement full offline caching, the repository can be enhanced:
+
+<Steps>
+  <Step title="Check Network">
+    Determine if device is online or offline
+  </Step>
+  <Step title="Try Network First">
+    If online, fetch from API and cache results
+  </Step>
+  <Step title="Fallback to Cache">
+    If offline or network fails, retrieve from database
+  </Step>
+  <Step title="Return Data">
+    Provide data regardless of network state
+  </Step>
+</Steps>
+
+<CodeGroup>
+```kotlin Enhanced Repository Pattern
+override suspend fun getArticles(query: String?): Resource<List<Article>> {
+    return withContext(Dispatchers.IO) {
+        // Try network first
+        if (networkHelper.isNetworkConnected()) {
+            val response = apiHelper.safeApiCall {
+                api.getArticles(query, paginationManager.getCurrentOffset())
+            }
+
+            when (response) {
+                is ApiSuccessResponse -> {
+                    val articles = response.body.articles
+                    // Cache articles in database
+                    articleDao.insertArticles(articles.map { it.toEntity() })
+                    paginationManager.updatePagination(response.body)
+                    return@withContext Resource.Success(
+                        articles.map { it.toArticleDomain() }
+                    )
+                }
+                is ApiErrorResponse -> {
+                    // Network error, fallback to cache
+                }
+            }
+        }
+
+        // Fallback to cached data
+        val cachedArticles = articleDao.getArticles()
+        if (cachedArticles.isNotEmpty()) {
+            Resource.Success(cachedArticles.map { it.toDomain() })
+        } else {
+            Resource.Error(message = "No cached data available")
+        }
+    }
+}
+```
+</CodeGroup>
+
+## Network Status Detection
+
+The app includes a `NetworkHelper` to detect connectivity.
+
+```kotlin
+class NetworkHelper @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+    fun isNetworkConnected(): Boolean {
+        val connectivityManager = context.getSystemService(
+            Context.CONNECTIVITY_SERVICE
+        ) as ConnectivityManager
+        
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network)
+        
+        return capabilities?.hasCapability(
+            NetworkCapabilities.NET_CAPABILITY_INTERNET
+        ) == true
+    }
+}
+```
+
+## Database Operations
+
+Room database operations run on background threads using coroutines.
+
+<CardGroup cols={2}>
+  <Card title="Suspend Functions" icon="clock">
+    All DAO methods use `suspend` for coroutine support
+  </Card>
+  <Card title="IO Dispatcher" icon="hard-drive">
+    Database operations run on Dispatchers.IO
+  </Card>
+  <Card title="Type Safety" icon="shield">
+    Room provides compile-time SQL query verification
+  </Card>
+  <Card title="LiveData/Flow" icon="water">
+    Support for reactive data streams
+  </Card>
+</CardGroup>
+
+## Extending Offline Capabilities
+
+To add full article caching, create additional entities and DAOs:
+
+### Article Entity
+
+```kotlin
+@Entity(tableName = "articles")
+data class ArticleEntity(
+    @PrimaryKey
+    val id: Long,
+    val title: String,
+    val imageUrl: String,
+    val newsSite: String,
+    val publishedAt: String,
+    val cachedAt: Long = System.currentTimeMillis()
+)
+```
+
+### Article DAO
+
+```kotlin
+@Dao
+interface ArticleDao {
+    @Query("SELECT * FROM articles ORDER BY publishedAt DESC")
+    suspend fun getArticles(): List<ArticleEntity>
+
+    @Query("SELECT * FROM articles WHERE id = :articleId")
+    suspend fun getArticleById(articleId: Long): ArticleEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertArticles(articles: List<ArticleEntity>)
+
+    @Query("DELETE FROM articles WHERE cachedAt < :expirationTime")
+    suspend fun deleteExpiredArticles(expirationTime: Long)
+}
+```
+
+### ArticleDetail Entity
+
+```kotlin
+@Entity(tableName = "article_details")
+data class ArticleDetailEntity(
+    @PrimaryKey
+    val id: Long,
+    val title: String,
+    val url: String,
+    val newsSite: String,
+    val imageUrl: String,
+    val summary: String,
+    val publishedAt: String,
+    val updatedAt: String
+)
+```
+
+## Cache Invalidation Strategy
+
+Implement cache expiration to keep data fresh:
+
+```kotlin
+class CacheManager @Inject constructor(
+    private val articleDao: ArticleDao
+) {
+    suspend fun clearExpiredCache() {
+        val oneDayAgo = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+        articleDao.deleteExpiredArticles(oneDayAgo)
+    }
+}
+```
+
+<Warning>
+Regularly clearing expired cache prevents the database from growing too large and ensures users see relatively fresh content.
+</Warning>
+
+## Benefits
+
+<CardGroup cols={2}>
+  <Card title="Persistent State" icon="floppy-disk">
+    Pagination position survives app restarts
+  </Card>
+  <Card title="Offline Access" icon="wifi">
+    View previously loaded content without internet
+  </Card>
+  <Card title="Better UX" icon="heart">
+    Instant loading of cached content
+  </Card>
+  <Card title="Reduced Data Usage" icon="chart-line">
+    Less API calls for repeated content
+  </Card>
+</CardGroup>
+
+## Current Limitations
+
+The current implementation stores only pagination state. Future enhancements could include:
+
+<AccordionGroup>
+  <Accordion title="Article List Caching">
+    Cache the list of articles for offline browsing
+  </Accordion>
+  <Accordion title="Article Detail Caching">
+    Store full article details including content and images
+  </Accordion>
+  <Accordion title="Image Caching">
+    Use Glide's disk cache for offline image display
+  </Accordion>
+  <Accordion title="Smart Sync">
+    Sync cached data when connection is restored
+  </Accordion>
+</AccordionGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Pagination" icon="list" href="/features/pagination">
+    Pagination state is persisted offline
+  </Card>
+  <Card title="Article List" icon="list" href="/features/article-list">
+    Can be enhanced with article caching
+  </Card>
+  <Card title="Article Details" icon="file-lines" href="/features/article-details">
+    Can be enhanced with detail caching
+  </Card>
+</CardGroup>

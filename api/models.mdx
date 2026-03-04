@@ -1,0 +1,350 @@
+---
+title: 'Data Models'
+description: 'DTOs and data transfer objects for the Space Flight News API'
+---
+
+## Overview
+
+The data model layer contains Data Transfer Objects (DTOs) that represent the JSON structure returned by the Space Flight News API. These DTOs are mapped to domain models for use in the application.
+
+**Package:** `com.bsvillarraga.spaceflightnews.data.model`
+
+---
+
+## ArticleDto
+
+Represents a complete article from the Space Flight News API.
+
+**Source:** `ArticleDto.kt:7`
+
+```kotlin
+data class ArticleDto(
+    val id: Long,
+    val title: String,
+    val authors: List<AuthorDto>,
+    val url: String,
+    @SerializedName("image_url")
+    val imageUrl: String,
+    @SerializedName("news_site")
+    val newsSite: String,
+    val summary: String,
+    @SerializedName("published_at")
+    val publishedAt: String,
+    @SerializedName("updated_at")
+    val updatedAt: String,
+    val featured: Boolean,
+    val launches: List<LaunchDto>,
+    val events: List<EventDto>
+)
+```
+
+### Fields
+
+<ResponseField name="id" type="Long" required>
+  Unique identifier for the article
+</ResponseField>
+
+<ResponseField name="title" type="String" required>
+  Article title/headline
+</ResponseField>
+
+<ResponseField name="authors" type="List<AuthorDto>" required>
+  List of authors who wrote the article
+</ResponseField>
+
+<ResponseField name="url" type="String" required>
+  URL to the original article on the news site
+</ResponseField>
+
+<ResponseField name="imageUrl" type="String" required>
+  URL to the article's featured image. Mapped from `image_url` in JSON.
+</ResponseField>
+
+<ResponseField name="newsSite" type="String" required>
+  Name of the news site that published the article (e.g., "Space.com", "NASA"). Mapped from `news_site` in JSON.
+</ResponseField>
+
+<ResponseField name="summary" type="String" required>
+  Brief summary or excerpt of the article content
+</ResponseField>
+
+<ResponseField name="publishedAt" type="String" required>
+  ISO 8601 timestamp when the article was published. Mapped from `published_at` in JSON.
+</ResponseField>
+
+<ResponseField name="updatedAt" type="String" required>
+  ISO 8601 timestamp when the article was last updated. Mapped from `updated_at` in JSON.
+</ResponseField>
+
+<ResponseField name="featured" type="Boolean" required>
+  Whether this article is featured/highlighted
+</ResponseField>
+
+<ResponseField name="launches" type="List<LaunchDto>" required>
+  List of space launches related to this article
+</ResponseField>
+
+<ResponseField name="events" type="List<EventDto>" required>
+  List of space events related to this article
+</ResponseField>
+
+### Mapper Methods
+
+```kotlin
+fun toArticleDomain(): Article
+fun toArticleDetailDomain(): ArticleDetail
+```
+
+These extension functions convert the DTO to domain models used in the UI layer.
+
+### Example JSON
+
+```json
+{
+  "id": 12345,
+  "title": "SpaceX Successfully Launches Starship",
+  "authors": [
+    {
+      "name": "John Doe",
+      "socials": null
+    }
+  ],
+  "url": "https://space.com/starship-launch",
+  "image_url": "https://cdn.space.com/starship.jpg",
+  "news_site": "Space.com",
+  "summary": "SpaceX successfully launched its Starship vehicle...",
+  "published_at": "2024-03-15T14:30:00Z",
+  "updated_at": "2024-03-15T15:00:00Z",
+  "featured": true,
+  "launches": [],
+  "events": []
+}
+```
+
+---
+
+## PaginationDto
+
+Wrapper for paginated API responses.
+
+**Source:** `PaginationDto.kt:5`
+
+```kotlin
+data class PaginationDto(
+    val count: Long,
+    val next: String? = null,
+    val previous: String,
+    @SerializedName("results")
+    val articles: List<ArticleDto>
+)
+```
+
+### Fields
+
+<ResponseField name="count" type="Long" required>
+  Total number of articles available across all pages
+</ResponseField>
+
+<ResponseField name="next" type="String?">
+  URL for the next page of results. `null` if this is the last page.
+</ResponseField>
+
+<ResponseField name="previous" type="String" required>
+  URL for the previous page of results
+</ResponseField>
+
+<ResponseField name="articles" type="List<ArticleDto>" required>
+  Array of articles for the current page. Mapped from `results` in JSON.
+</ResponseField>
+
+### Example JSON
+
+```json
+{
+  "count": 1523,
+  "next": "https://api.spaceflightnewsapi.net/v4/articles?limit=10&offset=10",
+  "previous": "https://api.spaceflightnewsapi.net/v4/articles?limit=10&offset=0",
+  "results": [
+    { /* ArticleDto */ },
+    { /* ArticleDto */ }
+  ]
+}
+```
+
+---
+
+## AuthorDto
+
+Represents an article author.
+
+**Source:** `AuthorDto.kt:5`
+
+```kotlin
+data class AuthorDto(
+    val name: String,
+    val socials: SocialDto?
+)
+```
+
+### Fields
+
+<ResponseField name="name" type="String" required>
+  Full name of the author
+</ResponseField>
+
+<ResponseField name="socials" type="SocialDto?">
+  Optional social media links for the author
+</ResponseField>
+
+### Mapper Method
+
+```kotlin
+fun toDomain(): Author
+```
+
+---
+
+## SocialDto
+
+Social media links for an author.
+
+**Source:** `SocialDto.kt:3`
+
+```kotlin
+data class SocialDto(
+    val x: String,
+    val youtube: String,
+    val instagram: String,
+    val linkedin: String,
+    val mastodon: String,
+    val bluesky: String
+)
+```
+
+### Fields
+
+<ResponseField name="x" type="String" required>
+  X (formerly Twitter) profile URL
+</ResponseField>
+
+<ResponseField name="youtube" type="String" required>
+  YouTube channel URL
+</ResponseField>
+
+<ResponseField name="instagram" type="String" required>
+  Instagram profile URL
+</ResponseField>
+
+<ResponseField name="linkedin" type="String" required>
+  LinkedIn profile URL
+</ResponseField>
+
+<ResponseField name="mastodon" type="String" required>
+  Mastodon profile URL
+</ResponseField>
+
+<ResponseField name="bluesky" type="String" required>
+  Bluesky profile URL
+</ResponseField>
+
+---
+
+## LaunchDto
+
+Represents a space launch related to an article.
+
+**Source:** `LaunchDto.kt:5`
+
+```kotlin
+data class LaunchDto(
+    @SerializedName("launch_id")
+    val launchId: String,
+    val provider: String
+)
+```
+
+### Fields
+
+<ResponseField name="launchId" type="String" required>
+  Unique identifier for the launch. Mapped from `launch_id` in JSON.
+</ResponseField>
+
+<ResponseField name="provider" type="String" required>
+  Launch service provider (e.g., "SpaceX", "NASA", "Roscosmos")
+</ResponseField>
+
+### Example JSON
+
+```json
+{
+  "launch_id": "5eb87cd9ffd86e000604b32a",
+  "provider": "Launch Library 2"
+}
+```
+
+---
+
+## EventDto
+
+Represents a space event related to an article.
+
+**Source:** `EventDto.kt:5`
+
+```kotlin
+data class EventDto(
+    @SerializedName("event_id")
+    val eventId: String,
+    val provider: String
+)
+```
+
+### Fields
+
+<ResponseField name="eventId" type="String" required>
+  Unique identifier for the event. Mapped from `event_id` in JSON.
+</ResponseField>
+
+<ResponseField name="provider" type="String" required>
+  Event information provider (e.g., "Launch Library 2")
+</ResponseField>
+
+### Example JSON
+
+```json
+{
+  "event_id": "5eb87d13ffd86e000604b360",
+  "provider": "Launch Library 2"
+}
+```
+
+---
+
+## Domain Mapping
+
+DTOs are converted to domain models to separate API concerns from business logic:
+
+```kotlin
+// Convert DTO to simplified domain model for list view
+val article: Article = articleDto.toArticleDomain()
+
+// Convert DTO to detailed domain model for detail view
+val articleDetail: ArticleDetail = articleDto.toArticleDetailDomain()
+
+// Convert author DTO to domain model
+val author: Author = authorDto.toDomain()
+```
+
+### Benefits
+
+- **Separation of Concerns**: API changes don't affect UI layer
+- **Simplified Models**: Domain models only include fields needed by UI
+- **Type Safety**: Compile-time checking for model conversions
+- **Testability**: Easy to mock domain models in tests
+
+---
+
+## Related
+
+- [ArticlesApiClient](/api/api-client) - API endpoints that return these DTOs
+- [ArticleRepository](/api/repository) - Converts DTOs to domain models
+- [Domain Models](/api/domain-models) - Simplified models for UI layer

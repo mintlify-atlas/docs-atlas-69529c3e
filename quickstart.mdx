@@ -1,80 +1,314 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get the Space Flight News Android app up and running in minutes
 ---
 
-## Get started in three steps
+# Quickstart Guide
 
-Get your documentation site running locally and make your first customization.
+Get the Space Flight News app running on your Android device or emulator in just a few steps.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+Before you begin, ensure you have the following installed:
 
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+- **Android Studio** (Arctic Fox or newer recommended)
+- **JDK 11** or higher
+- **Android SDK** with API level 24-35
+- **Git** for cloning the repository
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  The app requires minimum SDK 24 (Android 7.0) and targets SDK 34.
 </Note>
+
+## Step 1: Clone the Repository
+
+<Steps>
+  <Step title="Clone the project">
+    Open your terminal and clone the repository:
+    
+    ```bash
+    git clone https://github.com/yourusername/space-flight-news.git
+    cd space-flight-news
+    ```
+  </Step>
+  
+  <Step title="Open in Android Studio">
+    Launch Android Studio and select **File > Open**, then navigate to the cloned directory.
+    
+    Android Studio will automatically start syncing Gradle files.
+  </Step>
+</Steps>
+
+## Step 2: Configure Build Environment
+
+The project uses Kotlin DSL for Gradle configuration. No additional setup is required - the build configuration is already optimized:
+
+```kotlin build.gradle.kts
+android {
+    namespace = "com.bsvillarraga.spaceflightnews"
+    compileSdk = 35
+    
+    defaultConfig {
+        applicationId = "com.bsvillarraga.spaceflightnews"
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+    }
+    
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+}
+```
+
+<Warning>
+  Make sure your Android Studio is using JDK 11. You can verify this in **File > Project Structure > SDK Location**.
+</Warning>
+
+## Step 3: Sync Dependencies
+
+The app uses several key dependencies that will be downloaded automatically:
+
+- **Dagger Hilt** for dependency injection
+- **Retrofit** for API calls
+- **Room** for local database
+- **Jetpack Navigation** for screen navigation
+- **Glide** for image loading
+- **Coroutines** for asynchronous operations
+
+Wait for Gradle to finish syncing. This may take a few minutes on the first run.
+
+## Step 4: Set Up an Android Device
+
+Choose one of the following options:
+
+<Tabs>
+  <Tab title="Physical Device">
+    ### Using a Physical Device
+    
+    1. Enable **Developer Options** on your Android device:
+       - Go to **Settings > About Phone**
+       - Tap **Build Number** 7 times
+    
+    2. Enable **USB Debugging**:
+       - Go to **Settings > Developer Options**
+       - Toggle on **USB Debugging**
+    
+    3. Connect your device via USB
+    
+    4. Accept the debugging authorization prompt on your device
+  </Tab>
+  
+  <Tab title="Emulator">
+    ### Using an Emulator
+    
+    1. Open **AVD Manager** in Android Studio (Tools > AVD Manager)
+    
+    2. Click **Create Virtual Device**
+    
+    3. Select a device definition (e.g., Pixel 5)
+    
+    4. Choose a system image:
+       - Recommended: **Android 12 (API 31)** or higher
+       - Minimum: **Android 7.0 (API 24)**
+    
+    5. Click **Finish** and launch the emulator
+  </Tab>
+</Tabs>
+
+## Step 5: Run the App
+
+<Steps>
+  <Step title="Build the project">
+    Click the **Build** menu and select **Make Project**, or use the shortcut:
+    
+    ```
+    Ctrl+F9 (Windows/Linux)
+    Cmd+F9 (Mac)
+    ```
+  </Step>
+  
+  <Step title="Run the app">
+    Click the **Run** button (green play icon) or use:
+    
+    ```
+    Shift+F10 (Windows/Linux)
+    Ctrl+R (Mac)
+    ```
+    
+    Select your target device when prompted.
+  </Step>
+  
+  <Step title="Wait for installation">
+    Android Studio will build, install, and launch the app on your selected device.
+    
+    You should see the articles list screen with the latest space news!
+  </Step>
+</Steps>
+
+## Verify Installation
+
+Once the app launches, you should see:
+
+1. A list of space flight news articles with images
+2. A search icon in the toolbar
+3. Pull-down to refresh functionality
+4. Infinite scroll - new articles load as you scroll down
+
+<Check>
+  If you see articles loading, congratulations! The app is running successfully.
+</Check>
+
+## App Components at Startup
+
+### Application Class
+
+The app starts with the `MyApp` class annotated with `@HiltAndroidApp`:
+
+```kotlin MyApp.kt
+@HiltAndroidApp
+class MyApp: Application()
+```
+
+This initializes Dagger Hilt for dependency injection throughout the app.
+
+### Dependency Injection
+
+Hilt automatically provides dependencies like the Retrofit client:
+
+```kotlin NetworkModule.kt
+@Provides
+@Singleton
+fun provideRetrofit(): Retrofit {
+    return Retrofit.Builder()
+        .baseUrl("https://api.spaceflightnewsapi.net/")
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+}
+
+@Provides
+@Singleton
+fun provideArticlesApiClient(retrofit: Retrofit): ArticlesApiClient =
+    retrofit.create(ArticlesApiClient::class.java)
+```
+
+### Main Activity
+
+The single activity hosts all fragments using Jetpack Navigation:
+
+```xml AndroidManifest.xml
+<activity
+    android:name=".presentation.ui.MainActivity"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity>
+```
+
+## Required Permissions
+
+The app requests these permissions at runtime:
+
+```xml AndroidManifest.xml
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+```
+
+- **INTERNET**: Required for fetching articles from the API
+- **ACCESS_NETWORK_STATE**: Checks network availability
+- **RECORD_AUDIO**: Enables voice search functionality
+- **POST_NOTIFICATIONS**: Allows the app to send notifications
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build fails with 'Java version' error">
+    Ensure Android Studio is using JDK 11:
+    
+    1. Go to **File > Project Structure**
+    2. Under **SDK Location**, set **Gradle JDK** to version 11 or higher
+    3. Click **Apply** and rebuild
+  </Accordion>
+  
+  <Accordion title="App crashes on launch">
+    Check the Logcat output for error messages:
+    
+    1. Open **Logcat** in Android Studio (View > Tool Windows > Logcat)
+    2. Filter by your app's package name
+    3. Look for red error messages or stack traces
+    
+    Common issues:
+    - Missing internet permission (should be granted automatically)
+    - API connectivity issues (check your device's internet connection)
+  </Accordion>
+  
+  <Accordion title="No articles appear">
+    This could be due to:
+    
+    1. **No internet connection**: Check your device/emulator has internet access
+    2. **API issues**: The Space Flight News API might be temporarily unavailable
+    3. **Network error**: Check Logcat for network-related errors
+    
+    Try:
+    - Pull down to refresh
+    - Check the device's internet connection
+    - Restart the app
+  </Accordion>
+  
+  <Accordion title="Gradle sync fails">
+    1. Click **File > Invalidate Caches** and restart
+    2. Delete `.gradle` folder in project root
+    3. Click **File > Sync Project with Gradle Files**
+    4. If issues persist, update Gradle wrapper:
+    
+    ```bash
+    ./gradlew wrapper --gradle-version=8.0
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Now that you have the app running, explore these topics:
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="sitemap" href="/architecture/overview">
+    Deep dive into the clean architecture implementation
+  </Card>
+  <Card title="Core Features" icon="star" href="/features/article-list">
+    Explore article list, search, and pagination features
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/repository">
+    Explore the repository and API client documentation
+  </Card>
+  <Card title="Data Layer" icon="database" href="/components/data-layer">
+    Learn about data management and persistence
+  </Card>
+</CardGroup>
+
+## Running Tests
+
+The project includes unit and instrumented tests. Run them with:
+
+```bash
+# Unit tests
+./gradlew test
+
+# Instrumented tests (requires connected device/emulator)
+./gradlew connectedAndroidTest
+```
+
+<Tip>
+  The project uses JUnit 5, MockK, and Turbine for testing. Check the test files for examples.
+</Tip>

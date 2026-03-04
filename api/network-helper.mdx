@@ -1,0 +1,83 @@
+---
+title: NetworkHelper
+description: Helper class for checking network availability
+---
+
+## Overview
+
+`NetworkHelper` is a utility class that provides methods to verify network availability on the device. It uses Android's `ConnectivityManager` to check for active internet connections.
+
+**Package:** `com.bsvillarraga.spaceflightnews.core.network`
+
+**Source:** [NetworkHelper.kt:11](~/workspace/source/app/src/main/java/com/bsvillarraga/spaceflightnews/core/network/NetworkHelper.kt:11)
+
+## Constructor
+
+```kotlin
+class NetworkHelper @Inject constructor(private val context: Context)
+```
+
+<ParamField path="context" type="Context" required>
+  Android context used to access system services. Injected via Dagger/Hilt.
+</ParamField>
+
+## Methods
+
+### isNetworkAvailable
+
+Checks if the device has an active internet connection.
+
+```kotlin
+fun isNetworkAvailable(): Boolean
+```
+
+**Returns:** `Boolean`
+- `true` if an active network connection with internet capability is available
+- `false` if no network connection is available or the connection lacks internet capability
+
+**Example:**
+```kotlin
+class MyViewModel @Inject constructor(
+    private val networkHelper: NetworkHelper
+) : ViewModel() {
+    
+    fun fetchData() {
+        if (networkHelper.isNetworkAvailable()) {
+            // Proceed with network request
+            loadDataFromApi()
+        } else {
+            // Show offline message
+            showOfflineError()
+        }
+    }
+}
+```
+
+## Implementation Details
+
+The method performs the following checks:
+
+1. Gets the `ConnectivityManager` system service
+2. Retrieves the active network
+3. Gets the network capabilities for the active network
+4. Verifies the network has `NET_CAPABILITY_INTERNET`
+
+## Dependencies
+
+This class uses the following Android APIs:
+- `android.net.ConnectivityManager`
+- `android.net.NetworkCapabilities`
+
+## Injection
+
+This class is designed to be injected using Dagger/Hilt:
+
+```kotlin
+@HiltViewModel
+class ArticleViewModel @Inject constructor(
+    private val networkHelper: NetworkHelper,
+    private val repository: ArticleRepository
+) : ViewModel() {
+    // ...
+}
+```

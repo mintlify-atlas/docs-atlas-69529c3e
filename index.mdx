@@ -1,97 +1,283 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: Space Flight News Documentation
+description: Modern Android app for browsing space flight news with offline support and real-time search
+mode: custom
 ---
 
-## Setting up
+<div className="relative overflow-hidden bg-gradient-to-br from-[#0f1117] via-[#1a1d27] to-[#0f1117] dark:bg-gradient-to-br dark:from-[#0f1117] dark:via-[#1a1d27] dark:to-[#0f1117] py-20">
+  <div className="max-w-7xl mx-auto px-6 lg:px-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+          Space Flight News Documentation
+        </h1>
+        <p className="text-base sm:text-lg lg:text-xl text-gray-300 dark:text-gray-300 mb-8 max-w-2xl">
+          Build native Android apps with clean architecture, offline support, and seamless API integration. Learn how to implement MVVM patterns, dependency injection, and modern Android development practices.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <a
+            href="/quickstart"
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-[#1E3A8A] hover:bg-[#1E40AF] text-white font-semibold transition-colors"
+          >
+            Get Started
+          </a>
+          <a
+            href="/architecture/overview"
+            className="inline-flex items-center px-6 py-3 rounded-lg border border-white/30 bg-white/10 hover:bg-white/20 text-white font-semibold transition-colors"
+          >
+            Explore Architecture
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#1E3A8A]/30 to-[#3B82F6]/30 rounded-2xl blur-3xl"></div>
+          <div className="relative bg-[#1a1d27] dark:bg-[#1a1d27] rounded-2xl border border-[#27272a] dark:border-[#27272a] p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            </div>
+            <pre className="text-sm text-gray-300 dark:text-gray-300 overflow-x-auto">
+{`@HiltViewModel
+class ArticlesViewModel @Inject constructor(
+  private val articleUseCase: GetArticlesUseCase
+) : ViewModel() {
 
-Get your documentation site up and running in minutes.
+  fun fetchArticles(query: String? = null) {
+    viewModelScope.launch {
+      val result = articleUseCase.getArticles(query)
+      _articles.value = result
+    }
+  }
+}`}
+            </pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+    Quick start
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Get up and running with Space Flight News in minutes
+  </p>
+  
+  <Steps>
+    <Step title="Clone the repository">
+      Clone the Space Flight News repository to your local machine:
+      
+      ```bash
+      git clone https://github.com/bsvillarraga/Space-Flight-News.git
+      cd Space-Flight-News
+      ```
+    </Step>
+    
+    <Step title="Open in Android Studio">
+      Open the project in Android Studio Arctic Fox or later. The project uses Gradle build system and will automatically sync dependencies including:
+      
+      - Dagger Hilt for dependency injection
+      - Retrofit for networking
+      - Room for local database
+      - Jetpack Navigation for screen transitions
+      
+      <Note>Ensure you have Android SDK 24 or higher installed</Note>
+    </Step>
+    
+    <Step title="Build and run">
+      Build the project and run it on an emulator or physical device:
+      
+      ```bash
+      ./gradlew assembleDebug
+      ```
+      
+      Or click the **Run** button in Android Studio. The app will connect to the Space Flight News API and display the latest articles.
+    </Step>
+    
+    <Step title="Explore the architecture">
+      The app follows clean architecture with three main layers:
+      
+      - **Data Layer**: API clients, repositories, and local database
+      - **Domain Layer**: Use cases and business logic
+      - **Presentation Layer**: ViewModels, fragments, and UI components
+      
+      Learn more in the [Architecture Overview](/architecture/overview).
+    </Step>
+  </Steps>
+</div>
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+    Explore by topic
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Dive deep into the features and architecture of Space Flight News
+  </p>
+  
+  <CardGroup cols={2}>
     <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+      title="Clean Architecture"
+      icon="layer-group"
+      href="/architecture/clean-architecture"
+    >
+      Learn how the app separates concerns across data, domain, and presentation layers
+    </Card>
+    <Card
+      title="Dependency Injection"
+      icon="plug"
+      href="/architecture/dependency-injection"
+    >
+      Explore how Dagger Hilt manages dependencies throughout the app
+    </Card>
+    <Card
+      title="Article List & Search"
+      icon="list"
+      href="/features/article-list"
+    >
+      Understand infinite scroll pagination and real-time search with debouncing
+    </Card>
+    <Card
+      title="Offline Mode"
+      icon="database"
+      href="/features/offline-mode"
+    >
+      Discover how Room database provides seamless offline article browsing
+    </Card>
+  </CardGroup>
+</div>
 
-## Create beautiful pages
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+    Core features
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Powerful capabilities built into Space Flight News
+  </p>
+  
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="border border-gray-200 dark:border-[#27272a] rounded-lg p-6 bg-white dark:bg-[#1a1d27] hover:border-[#1E3A8A] dark:hover:border-[#3B82F6] transition-colors">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-lg bg-[#1E3A8A]/10 dark:bg-[#1E3A8A]/20 flex items-center justify-center">
+          <span className="text-[#1E3A8A] dark:text-[#3B82F6] text-xl">🔍</span>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Real-time Search</h3>
+      </div>
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        Search articles with debounced queries to reduce API calls and improve performance
+      </p>
+    </div>
+    
+    <div className="border border-gray-200 dark:border-[#27272a] rounded-lg p-6 bg-white dark:bg-[#1a1d27] hover:border-[#1E3A8A] dark:hover:border-[#3B82F6] transition-colors">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-lg bg-[#1E3A8A]/10 dark:bg-[#1E3A8A]/20 flex items-center justify-center">
+          <span className="text-[#1E3A8A] dark:text-[#3B82F6] text-xl">📱</span>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">MVVM Pattern</h3>
+      </div>
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        ViewModels with LiveData ensure UI stays in sync with data and survives configuration changes
+      </p>
+    </div>
+    
+    <div className="border border-gray-200 dark:border-[#27272a] rounded-lg p-6 bg-white dark:bg-[#1a1d27] hover:border-[#1E3A8A] dark:hover:border-[#3B82F6] transition-colors">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-lg bg-[#1E3A8A]/10 dark:bg-[#1E3A8A]/20 flex items-center justify-center">
+          <span className="text-[#1E3A8A] dark:text-[#3B82F6] text-xl">♾️</span>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Infinite Scroll</h3>
+      </div>
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        Pagination manager handles offset tracking and loads more articles as you scroll
+      </p>
+    </div>
+    
+    <div className="border border-gray-200 dark:border-[#27272a] rounded-lg p-6 bg-white dark:bg-[#1a1d27] hover:border-[#1E3A8A] dark:hover:border-[#3B82F6] transition-colors">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-lg bg-[#1E3A8A]/10 dark:bg-[#1E3A8A]/20 flex items-center justify-center">
+          <span className="text-[#1E3A8A] dark:text-[#3B82F6] text-xl">💾</span>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Offline Caching</h3>
+      </div>
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        Room database caches articles locally for offline browsing with automatic sync
+      </p>
+    </div>
+  </div>
+</div>
 
-Everything you need to create world-class documentation.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+    API reference
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Complete reference for all layers of the application
+  </p>
+  
+  <CardGroup cols={3}>
+    <Card
+      title="Repository"
+      icon="box"
+      href="/api/repository"
+    >
+      Article repository interface and implementation
+    </Card>
+    <Card
+      title="API Client"
+      icon="cloud"
+      href="/api/api-client"
+    >
+      Retrofit API client for Space Flight News API
+    </Card>
+    <Card
+      title="ViewModels"
+      icon="eye"
+      href="/api/viewmodels"
+    >
+      ViewModel classes for managing UI state
+    </Card>
+    <Card
+      title="Use Cases"
+      icon="diagram-project"
+      href="/api/use-cases"
+    >
+      Business logic encapsulated in use cases
+    </Card>
+    <Card
+      title="Models"
+      icon="shapes"
+      href="/api/models"
+    >
+      Data transfer objects and domain models
+    </Card>
+    <Card
+      title="Extensions"
+      icon="puzzle-piece"
+      href="/api/extensions"
+    >
+      Kotlin extension functions for common operations
+    </Card>
+  </CardGroup>
+</div>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<div className="mt-20 mb-16 max-w-5xl mx-auto px-6">
+  <div className="border border-gray-200 dark:border-[#27272a] rounded-2xl p-8 md:p-12 bg-gradient-to-br from-[#1E3A8A]/5 to-[#3B82F6]/5 dark:from-[#1E3A8A]/10 dark:to-[#3B82F6]/10">
+    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4 text-center">
+      Ready to explore?
+    </h2>
+    <p className="text-base text-gray-600 dark:text-gray-400 mb-8 text-center max-w-2xl mx-auto">
+      Dive into the documentation to learn about clean architecture, dependency injection, and modern Android development practices
+    </p>
+    <div className="flex justify-center">
+      <a
+        href="/quickstart"
+        className="inline-flex items-center px-8 py-4 rounded-lg bg-[#1E3A8A] hover:bg-[#1E40AF] text-white font-semibold transition-colors"
+      >
+        Get Started Now
+      </a>
+    </div>
+  </div>
+</div>

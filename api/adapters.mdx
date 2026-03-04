@@ -1,0 +1,194 @@
+---
+title: Adapters
+description: API reference for RecyclerView adapters in Space Flight News app
+---
+
+## ArticleAdapter
+
+`com.bsvillarraga.spaceflightnews.presentation.ui.articles.adapter.ArticleAdapter`
+
+RecyclerView ListAdapter for displaying articles with pagination loading indicator.
+
+**Inheritance:** Extends `ListAdapter<Article, RecyclerView.ViewHolder>`
+
+**Diff Callback:** Uses `ArticleDiffCallback()` for efficient list updates
+
+### Constructor Parameters
+
+```kotlin
+class ArticleAdapter(
+    private val onItemClicked: (Article) -> Unit
+)
+```
+
+**Parameters:**
+- `onItemClicked` - Lambda invoked when article item is clicked, receives clicked Article
+
+### Properties
+
+- `viewTypeItem: Int = 0` - View type constant for article items
+- `viewTypeLoading: Int = 1` - View type constant for loading indicator
+- `isLoading: Boolean = false` - Current loading state for pagination
+
+### Methods
+
+#### getItemViewType()
+
+```kotlin
+override fun getItemViewType(position: Int): Int
+```
+
+Determines view type for position:
+- Returns `viewTypeItem` for article positions
+- Returns `viewTypeLoading` for loading indicator position
+
+**Returns:** View type constant
+
+**Source:** `adapter/ArticleAdapter.kt:18`
+
+#### getItemCount()
+
+```kotlin
+override fun getItemCount(): Int
+```
+
+Returns total item count including loading indicator.
+
+**Returns:** Article count + 1 if loading, otherwise just article count
+
+**Source:** `adapter/ArticleAdapter.kt:22`
+
+#### onCreateViewHolder()
+
+```kotlin
+override fun onCreateViewHolder(
+    parent: ViewGroup,
+    viewType: Int
+): RecyclerView.ViewHolder
+```
+
+Creates ViewHolder based on view type:
+- `viewTypeItem` → Creates `ArticleViewHolder` with `ItemArticleBinding`
+- `viewTypeLoading` → Creates `LoadingViewHolder` with `ItemLoadingBinding`
+
+**Parameters:**
+- `parent` - Parent ViewGroup
+- `viewType` - View type constant
+
+**Returns:** Appropriate ViewHolder instance
+
+**Source:** `adapter/ArticleAdapter.kt:26`
+
+#### onBindViewHolder()
+
+```kotlin
+override fun onBindViewHolder(
+    holder: RecyclerView.ViewHolder,
+    position: Int
+)
+```
+
+Binds article data to ViewHolder:
+- Only processes `ArticleViewHolder` instances
+- Gets article at position from ListAdapter
+- Calls `bind()` on holder
+- Sets click listener to invoke `onItemClicked` lambda
+
+**Parameters:**
+- `holder` - ViewHolder to bind
+- `position` - Item position in list
+
+**Source:** `adapter/ArticleAdapter.kt:43`
+
+#### setLoading()
+
+```kotlin
+fun setLoading(isLoading: Boolean)
+```
+
+Toggles loading indicator visibility for pagination.
+
+**Parameters:**
+- `isLoading` - true to show loading indicator, false to hide
+
+**Behavior:**
+- Returns early if state unchanged (prevents unnecessary updates)
+- When true: Notifies insertion of loading item at end
+- When false: Notifies removal of loading item
+
+**Source:** `adapter/ArticleAdapter.kt:54`
+
+---
+
+## ArticleViewHolder
+
+`com.bsvillarraga.spaceflightnews.presentation.ui.articles.adapter.ArticleViewHolder`
+
+ViewHolder for individual article items in RecyclerView.
+
+**Inheritance:** Extends `RecyclerView.ViewHolder`
+
+### Constructor Parameters
+
+```kotlin
+class ArticleViewHolder(private val binding: ItemArticleBinding) :
+    RecyclerView.ViewHolder(binding.root)
+```
+
+**Parameters:**
+- `binding` - View binding for article item layout
+
+### Methods
+
+#### bind()
+
+```kotlin
+fun bind(article: Article)
+```
+
+Binds article data to item views with image loading.
+
+**Parameters:**
+- `article` - Article data to display
+
+**Behavior:**
+1. Shows progress bar initially
+2. Loads article image using Glide with:
+   - Center crop transformation
+   - RequestListener for load state
+3. Hides progress bar on image load success/failure
+4. Shows image view only on successful load
+5. Sets formatted published date with string resource
+6. Sets article title
+
+**Image Loading:**
+- Uses Glide for efficient image loading and caching
+- Implements `RequestListener<Drawable>` for load state callbacks:
+  - `onLoadFailed()` - Returns false to allow Glide default error handling
+  - `onResourceReady()` - Hides progress bar, shows image, returns false
+
+**Date Formatting:**
+- Uses `toFormattedDate()` extension function
+- Formats with `R.string.published_at` string resource
+
+**Source:** `adapter/ArticleViewHolder.kt:19`
+
+### View Bindings
+
+The `bind()` method interacts with these views from `ItemArticleBinding`:
+
+- `progressBar` - ProgressBar shown during image load
+- `imgArticle` - ImageView for article image
+- `tvDate` - TextView for formatted published date
+- `titleText` - TextView for article title
+
+### Dependencies
+
+**Glide Configuration:**
+- `centerCrop()` - Image transformation
+- Custom RequestListener for load state management
+
+**Extensions Used:**
+- `Article.toFormattedDate()` - Formats timestamp to readable date string
+
+**Source:** `adapter/ArticleViewHolder.kt:1`

@@ -1,0 +1,216 @@
+---
+title: 'ArticlesApiClient'
+description: 'Retrofit API client for Space Flight News articles'
+---
+
+## Overview
+
+The `ArticlesApiClient` is a Retrofit interface that defines HTTP endpoints for fetching space flight news articles from the Space Flight News API v4.
+
+**Package:** `com.bsvillarraga.spaceflightnews.data.remote.articles`
+
+**Base URL:** `https://api.spaceflightnewsapi.net/v4/`
+
+## Interface
+
+```kotlin
+interface ArticlesApiClient {
+    suspend fun getArticles(
+        @Query("search") query: String? = null,
+        @Query("offset") offset: Int? = null,
+        @Query("limit") limit: Int? = 10,
+        @Query("ordering") sort: Array<String>? = arrayOf("-published_at")
+    ): Response<PaginationDto>
+    
+    suspend fun getArticleById(@Path("id") articleId: Long): Response<ArticleDto>
+}
+```
+
+---
+
+## Endpoints
+
+### GET /v4/articles
+
+Retrieves a paginated list of articles with optional filtering and sorting.
+
+```kotlin
+@GET("v4/articles")
+suspend fun getArticles(
+    @Query("search") query: String? = null,
+    @Query("offset") offset: Int? = null,
+    @Query("limit") limit: Int? = 10,
+    @Query("ordering") sort: Array<String>? = arrayOf("-published_at")
+): Response<PaginationDto>
+```
+
+#### Parameters
+
+<ParamField query="search" type="String?" default="null">
+  Optional search query to filter articles by title, summary, or content
+</ParamField>
+
+<ParamField query="offset" type="Int?" default="null">
+  Pagination offset - number of articles to skip. Used for loading more results.
+</ParamField>
+
+<ParamField query="limit" type="Int?" default="10">
+  Maximum number of articles to return per request. Default is 10.
+</ParamField>
+
+<ParamField query="ordering" type="Array<String>?" default='["-published_at"]'>
+  Sort order for results. Use `-published_at` for newest first (descending) or `published_at` for oldest first (ascending).
+</ParamField>
+
+#### Response
+
+<ResponseField name="Response<PaginationDto>" type="Response<PaginationDto>">
+  Retrofit Response containing a PaginationDto with:
+  - `count` - Total number of articles available
+  - `next` - URL for the next page (null if last page)
+  - `previous` - URL for the previous page
+  - `articles` - Array of ArticleDto objects
+</ResponseField>
+
+#### Example Request
+
+```kotlin
+val response = apiClient.getArticles(
+    query = "SpaceX",
+    offset = 0,
+    limit = 10,
+    sort = arrayOf("-published_at")
+)
+
+if (response.isSuccessful) {
+    val pagination = response.body()
+    val articles = pagination?.articles ?: emptyList()
+    println("Found ${articles.size} articles")
+}
+```
+
+#### cURL Example
+
+```bash
+curl "https://api.spaceflightnewsapi.net/v4/articles?search=SpaceX&offset=0&limit=10&ordering=-published_at"
+```
+
+---
+
+### GET /v4/articles/{id}
+
+Retrieves detailed information for a specific article by its ID.
+
+```kotlin
+@GET("v4/articles/{id}")
+suspend fun getArticleById(
+    @Path("id") articleId: Long
+): Response<ArticleDto>
+```
+
+#### Parameters
+
+<ParamField path="id" type="Long" required>
+  The unique identifier of the article to retrieve
+</ParamField>
+
+#### Response
+
+<ResponseField name="Response<ArticleDto>" type="Response<ArticleDto>">
+  Retrofit Response containing an ArticleDto with complete article details including:
+  - Basic information (id, title, summary)
+  - Authors and their social media
+  - Publication metadata (publishedAt, updatedAt)
+  - Related launches and events
+  - Media (imageUrl, url to original article)
+</ResponseField>
+
+#### Example Request
+
+```kotlin
+val articleId = 12345L
+val response = apiClient.getArticleById(articleId)
+
+if (response.isSuccessful) {
+    val article = response.body()
+    println("Article: ${article?.title}")
+    println("Published: ${article?.publishedAt}")
+    println("Authors: ${article?.authors?.joinToString { it.name }}")
+} else {
+    println("Error ${response.code()}: ${response.message()}")
+}
+```
+
+#### cURL Example
+
+```bash
+curl "https://api.spaceflightnewsapi.net/v4/articles/12345"
+```
+
+---
+
+## Configuration
+
+The API client is configured in the Hilt dependency injection module:
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object NetworkModule {
+    
+    @Provides
+    @Singleton
+    fun provideArticlesApiClient(retrofit: Retrofit): ArticlesApiClient {
+        return retrofit.create(ArticlesApiClient::class.java)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://api.spaceflightnewsapi.net/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+}
+```
+
+---
+
+## Error Handling
+
+The API client returns Retrofit `Response<T>` objects. The repository layer wraps these in `Resource<T>` for consistent error handling:
+
+```kotlin
+val response = apiHelper.safeApiCall { 
+    api.getArticles(query, offset) 
+}
+
+when (response) {
+    is ApiSuccessResponse -> {
+        // Handle success
+        val data = response.body
+    }
+    is ApiErrorResponse -> {
+        // Handle error
+        val errorCode = response.code
+        val errorMessage = response.msg
+    }
+}
+```
+
+### Common Error Codes
+
+- **404** - Article not found (when fetching by ID)
+- **400** - Invalid query parameters
+- **500** - Server error
+- **503** - Service unavailable
+
+---
+
+## Related
+
+- [ArticleRepository](/api/repository) - Repository that uses this client
+- [Data Models](/api/models) - Response DTOs (PaginationDto, ArticleDto)
+- [Network Helper](/api/network-helper) - Network connectivity checker

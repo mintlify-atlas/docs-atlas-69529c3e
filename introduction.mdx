@@ -1,0 +1,183 @@
+---
+title: Introduction
+description: Learn about the Space Flight News Android app - a clean architecture mobile application for browsing space news
+---
+
+# Space Flight News Android App
+
+A modern Android application built with Kotlin that brings the latest space flight news to your fingertips. The app fetches articles from the [Space Flight News API](https://api.spaceflightnewsapi.net/) and presents them in a beautiful, user-friendly interface.
+
+## Architecture Overview
+
+This app follows **Clean Architecture** principles with clear separation of concerns across three layers:
+
+### Data Layer
+Handles all data operations including network requests and local caching.
+
+```kotlin
+// Example: Article API Client
+@GET("v4/articles")
+suspend fun getArticles(
+    @Query("search") query: String? = null,
+    @Query("offset") offset: Int? = null,
+    @Query("limit") limit: Int? = 10,
+    @Query("ordering") sort: Array<String>? = arrayOf("-published_at")
+): Response<PaginationDto>
+```
+
+### Domain Layer
+Contains business logic, use cases, and domain models.
+
+```kotlin
+// Example: GetArticlesUseCase
+class GetArticlesUseCase @Inject constructor(
+    private val repository: ArticleRepository
+) {
+    suspend fun getArticles(query: String? = null): Resource<List<Article>> {
+        return repository.getArticles(query)
+    }
+}
+```
+
+### Presentation Layer
+Manages UI components, ViewModels, and user interactions using MVVM pattern.
+
+```kotlin
+// Example: Fragment with ViewModel
+@AndroidEntryPoint
+class ArticlesFragment : Fragment() {
+    private val viewModel: ArticlesViewModel by viewModels()
+    
+    private fun observeArticle() {
+        viewModel.articles.observe(viewLifecycleOwner) { resource ->
+            when (resource) {
+                is Resource.Success -> loadData(resource.data)
+                is Resource.Loading -> showLoading()
+                is Resource.Error -> showError()
+            }
+        }
+    }
+}
+```
+
+## Key Technologies
+
+<CardGroup cols={2}>
+  <Card title="Dagger Hilt" icon="syringe">
+    Dependency injection framework for managing app components
+  </Card>
+  <Card title="Retrofit" icon="network-wired">
+    Type-safe HTTP client for API communication
+  </Card>
+  <Card title="Room Database" icon="database">
+    Local persistence for offline caching and pagination
+  </Card>
+  <Card title="Jetpack Navigation" icon="compass">
+    Type-safe navigation between screens
+  </Card>
+</CardGroup>
+
+## Core Features
+
+### Article Browsing
+Browse the latest space flight news articles with:
+- Infinite scroll pagination
+- Pull-to-refresh functionality
+- High-quality article images
+- Publication dates and news sources
+
+### Search Capabilities
+- Text-based search for finding specific articles
+- Voice search support with speech recognition
+- Real-time search results
+
+### Article Details
+View comprehensive article information including:
+- Full article summaries
+- Author information
+- Related launches and events
+- Direct links to original sources
+
+### Offline Support
+The app uses Room database for local caching, allowing users to browse previously loaded articles even without an internet connection.
+
+## Project Structure
+
+```
+app/src/main/java/com/bsvillarraga/spaceflightnews/
+├── core/                    # Core utilities and extensions
+│   ├── common/             # Common classes like Resource
+│   ├── extensions/         # Kotlin extensions
+│   └── network/            # Network helpers
+├── data/                   # Data layer
+│   ├── local/             # Room database
+│   ├── model/             # DTOs and data models
+│   ├── remote/            # API clients
+│   └── repository/        # Repository implementations
+├── domain/                 # Domain layer
+│   ├── model/             # Domain models
+│   ├── repository/        # Repository interfaces
+│   └── usecase/           # Business logic
+├── di/                     # Dependency injection modules
+└── presentation/           # Presentation layer
+    ├── permission/        # Permission handling
+    └── ui/                # Fragments, ViewModels, Adapters
+```
+
+## Resource Pattern
+
+The app uses a sealed class pattern to handle different states of data loading:
+
+```kotlin
+sealed class Resource<out T> {
+    data class Success<out T>(val data: T?) : Resource<T>()
+    data class Error<out T>(val code: String?, val msg: String, val error: Throwable? = null) : Resource<T>()
+    data class Loading<out T>(val data: T? = null) : Resource<T>()
+}
+```
+
+This pattern provides a clean way to handle loading states, success responses, and error cases throughout the app.
+
+## API Integration
+
+The app connects to the Space Flight News API v4:
+
+```kotlin
+val client = OkHttpClient.Builder()
+    .addInterceptor { chain ->
+        val original = chain.request()
+        val originalUrl = original.url()
+        
+        val newUrl = originalUrl.newBuilder()
+            .addQueryParameter("format", "json")
+            .build()
+        
+        val newRequest = original.newBuilder()
+            .url(newUrl)
+            .build()
+        
+        chain.proceed(newRequest)
+    }
+    .build()
+
+return Retrofit.Builder()
+    .baseUrl("https://api.spaceflightnewsapi.net/")
+    .client(client)
+    .addConverterFactory(GsonConverterFactory.create())
+    .build()
+```
+
+<Note>
+  The app requires API level 24 (Android 7.0) or higher and targets API level 34.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+    Get the app running on your device in minutes
+  </Card>
+  <Card title="Architecture Deep Dive" icon="layer-group" href="/architecture/overview">
+    Learn more about the clean architecture implementation
+  </Card>
+</CardGroup>

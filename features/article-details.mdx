@@ -1,0 +1,290 @@
+---
+title: Article Details
+description: Explore how the article detail screen works, including data fetching, UI rendering, and external link handling.
+---
+
+## Overview
+
+The article details feature displays comprehensive information about a selected news article, including title, authors, publication date, summary, and a full-size image. Users can read the full article by opening it in a web browser.
+
+## Architecture
+
+The detail screen follows MVVM architecture:
+
+- **ArticleDetailFragment**: UI layer for displaying article details
+- **ArticleDetailsViewModel**: Manages article data and loading state
+- **GetArticleByIdUseCase**: Fetches article details by ID
+- **ArticleDetail**: Domain model with complete article information
+
+## Fragment Implementation
+
+The `ArticleDetailFragment` receives article information through Safe Args navigation.
+
+### Receiving Navigation Arguments
+
+```kotlin ArticleDetailFragment.kt:32-43
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    arguments?.let {
+        articleId = it.getLong("articleId", -1L)
+        titleToolbar = it.getString("newsSite")
+    }
+
+    if (articleId == -1L && titleToolbar == null) {
+        return
+    }
+}
+```
+
+<Note>
+The fragment receives `articleId` and `newsSite` from the navigation arguments, with validation to ensure valid data.
+</Note>
+
+### View Setup
+
+```kotlin ArticleDetailFragment.kt:53-60
+override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    super.onViewCreated(view, savedInstanceState)
+    (requireActivity() as AppCompatActivity).supportActionBar?.title = titleToolbar
+
+    setupToolbar()
+    fetchArticle()
+    observeArticle()
+}
+```
+
+### Data Fetching
+
+```kotlin ArticleDetailFragment.kt:68-70
+private fun fetchArticle() {
+    viewModel.fetchArticleById(articleId, reload = true)
+}
+```
+
+### Observing Article Data
+
+```kotlin ArticleDetailFragment.kt:73-77
+private fun observeArticle() {
+    viewModel.article.observe(viewLifecycleOwner) { resource ->
+        handleResource(resource)
+    }
+}
+```
+
+## State Management
+
+The fragment handles three states using the `Resource` sealed class.
+
+```kotlin ArticleDetailFragment.kt:80-86
+private fun handleResource(resource: Resource<ArticleDetail>) {
+    when (resource) {
+        is Resource.Error -> showError()
+        is Resource.Loading -> showLoading()
+        is Resource.Success -> loadData(resource.data)
+    }
+}
+```
+
+## UI Data Binding
+
+When article data is successfully loaded, it's displayed in the UI.
+
+```kotlin ArticleDetailFragment.kt:89-115
+private fun loadData(article: ArticleDetail?) {
+    article?.let {
+        with(binding.contentCard) {
+            tvArticleTitle.text = it.title
+            tvDate.text = getString(R.string.published_at, it.publishedAt.toFormattedDate())
+            tvAuthors.text = getString(
+                R.string.authors,
+                if (it.authors.isEmpty()) {
+                    "No author"
+                } else {
+                    it.authors.joinToString(", ") { author -> author.name }
+                }
+            )
+            articleContent.text = it.summary
+
+
+
+            btnContinueReading.setOnClickListener {
+                openWebPage(article.url)
+            }
+        }
+
+        binding.headerImage.toNetworkGlide(requireContext(), it.imageUrl)
+    }
+
+    hideLoading()
+}
+```
+
+<Info>
+The UI displays:
+- Article title
+- Publication date (formatted)
+- Authors (comma-separated, or "No author")
+- Article summary
+- Header image loaded from network
+- Button to continue reading in browser
+</Info>
+
+## ViewModel Implementation
+
+The `ArticleDetailsViewModel` manages the article detail state.
+
+### Properties
+
+```kotlin ArticleDetailsViewModel.kt:18-21
+private var hasLoaded = false
+
+private val _article = MutableLiveData<Resource<ArticleDetail>>()
+val article: LiveData<Resource<ArticleDetail>> = _article
+```
+
+### Fetching Article by ID
+
+```kotlin ArticleDetailsViewModel.kt:28-36
+fun fetchArticleById(id: Long, reload: Boolean = false) {
+    if (hasLoaded && !reload) return
+    _article.value = Resource.Loading()
+
+    viewModelScope.launch {
+        _article.value = articleById.getArticleById(id)
+        hasLoaded = true
+    }
+}
+```
+
+<Tip>
+The `hasLoaded` flag prevents unnecessary re-fetching when the screen is recreated (e.g., on configuration changes), unless explicitly reloaded.
+</Tip>
+
+## Domain Model
+
+The `ArticleDetail` model contains comprehensive article information.
+
+```kotlin ArticleDetail.kt:3-13
+data class ArticleDetail(
+    val id: Long,
+    val title: String,
+    val authors: List<Author>,
+    val url: String,
+    val newsSite: String,
+    val imageUrl: String,
+    val summary: String,
+    val publishedAt: String,
+    val updatedAt: String
+)
+```
+
+## Opening External Links
+
+The "Continue Reading" button opens the full article in a web browser.
+
+```kotlin ArticleDetailFragment.kt:147-154
+private fun openWebPage(url: String) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    if (intent.resolveActivity(requireContext().packageManager) != null) {
+        startActivity(intent)
+    } else {
+        showToast("No se encontró un navegador web")
+    }
+}
+```
+
+<Warning>
+The app checks if a browser is available before attempting to open the URL. If no browser is found, it shows a toast message.
+</Warning>
+
+## Error Handling
+
+If loading fails, the app displays an error screen with a retry button.
+
+```kotlin ArticleDetailFragment.kt:135-144
+private fun showError() {
+    binding.showState(showError = true)
+    binding.contentInformation.apply {
+        ivInformation.toResourceGlide(requireContext(), R.drawable.error)
+
+        contentError.btnRetry.setOnClickListener {
+            fetchArticle()
+        }
+    }
+}
+```
+
+## Loading State
+
+During data fetching, a loading indicator is displayed.
+
+```kotlin ArticleDetailFragment.kt:123-132
+private fun showLoading() {
+    binding.showState(showLoading = true)
+
+    binding.contentLoading.apply {
+        ivLoading.toResourceGlide(
+            requireContext(),
+            R.drawable.astronaut_with_space_shuttle_loader
+        )
+    }
+}
+```
+
+## Use Case Implementation
+
+The feature uses a use case to fetch article details from the repository.
+
+<CodeGroup>
+```kotlin Fetching Article
+viewModelScope.launch {
+    _article.value = articleById.getArticleById(id)
+    hasLoaded = true
+}
+```
+
+```kotlin Repository Call
+override suspend fun getArticleById(articleId: Long): Resource<ArticleDetail> {
+    return withContext(Dispatchers.IO) {
+        val response: ApiResponse<ArticleDto> =
+            apiHelper.safeApiCall { api.getArticleById(articleId) }
+
+        when (response) {
+            is ApiSuccessResponse -> {
+                val article = response.body
+                Resource.Success(article.toArticleDetailDomain())
+            }
+
+            is ApiErrorResponse -> Resource.Error(response.code, response.msg, response.error)
+        }
+    }
+}
+```
+</CodeGroup>
+
+## Navigation Pattern
+
+The detail screen is accessed from the article list via Safe Args.
+
+```kotlin ArticlesFragment.kt:168-175
+private fun navigateArticlesToArticleDetail(article: Article) {
+    findNavController().navigate(
+        ArticlesFragmentDirections.actionArticlesFragmentToArticleDetailFragment(
+            articleId = article.id,
+            newsSite = article.newsSite
+        )
+    )
+}
+```
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Article List" icon="list" href="/features/article-list">
+    Browse all space flight news articles
+  </Card>
+  <Card title="Offline Mode" icon="wifi" href="/features/offline-mode">
+    Access article details without internet
+  </Card>
+</CardGroup>

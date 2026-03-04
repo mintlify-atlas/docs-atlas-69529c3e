@@ -1,0 +1,168 @@
+---
+title: Use Cases
+description: Domain layer use cases for the Space Flight News Android app
+---
+
+Use cases encapsulate business logic and act as intermediaries between the presentation layer and the repository layer.
+
+## GetArticlesUseCase
+
+Retrieves a list of articles from the repository, optionally filtered by a search query.
+
+### Method: getArticles
+
+Fetches articles with optional search filtering.
+
+```kotlin
+suspend fun getArticles(query: String? = null): Resource<List<Article>>
+```
+
+#### Parameters
+
+<ParamField query="query" type="String?" default="null">
+  Optional search query to filter articles. If null, returns all articles.
+</ParamField>
+
+#### Returns
+
+<ResponseField name="Resource<List<Article>>" type="Resource">
+  A Resource wrapper containing either a successful list of articles or an error state.
+  
+  <Expandable title="Article properties">
+    <ResponseField name="id" type="Long">
+      Unique identifier for the article
+    </ResponseField>
+    
+    <ResponseField name="title" type="String">
+      Title of the article
+    </ResponseField>
+    
+    <ResponseField name="imageUrl" type="String">
+      URL of the article's featured image
+    </ResponseField>
+    
+    <ResponseField name="newsSite" type="String">
+      Name of the news site that published the article
+    </ResponseField>
+    
+    <ResponseField name="publishedAt" type="String">
+      Publication date and time of the article
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Example Usage
+
+```kotlin
+class ArticleViewModel @Inject constructor(
+    private val getArticlesUseCase: GetArticlesUseCase
+) : ViewModel() {
+    
+    fun loadArticles(searchQuery: String? = null) {
+        viewModelScope.launch {
+            when (val result = getArticlesUseCase.getArticles(searchQuery)) {
+                is Resource.Success -> {
+                    // Handle successful response
+                    val articles = result.data
+                }
+                is Resource.Error -> {
+                    // Handle error
+                }
+                is Resource.Loading -> {
+                    // Show loading state
+                }
+            }
+        }
+    }
+}
+```
+
+---
+
+## GetArticleByIdUseCase
+
+Retrieves detailed information about a specific article by its ID.
+
+### Method: getArticleById
+
+Fetches the full details of an article using its unique identifier.
+
+```kotlin
+suspend fun getArticleById(articleId: Long): Resource<ArticleDetail>
+```
+
+#### Parameters
+
+<ParamField query="articleId" type="Long" required>
+  The unique identifier of the article to retrieve.
+</ParamField>
+
+#### Returns
+
+<ResponseField name="Resource<ArticleDetail>" type="Resource">
+  A Resource wrapper containing either the article details or an error state.
+  
+  <Expandable title="ArticleDetail properties">
+    <ResponseField name="id" type="Long">
+      Unique identifier for the article
+    </ResponseField>
+    
+    <ResponseField name="title" type="String">
+      Title of the article
+    </ResponseField>
+    
+    <ResponseField name="authors" type="List<Author>">
+      List of authors who wrote the article
+    </ResponseField>
+    
+    <ResponseField name="url" type="String">
+      URL to the full article on the original news site
+    </ResponseField>
+    
+    <ResponseField name="newsSite" type="String">
+      Name of the news site that published the article
+    </ResponseField>
+    
+    <ResponseField name="imageUrl" type="String">
+      URL of the article's featured image
+    </ResponseField>
+    
+    <ResponseField name="summary" type="String">
+      Brief summary of the article content
+    </ResponseField>
+    
+    <ResponseField name="publishedAt" type="String">
+      Publication date and time of the article
+    </ResponseField>
+    
+    <ResponseField name="updatedAt" type="String">
+      Last update date and time of the article
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Example Usage
+
+```kotlin
+class ArticleDetailViewModel @Inject constructor(
+    private val getArticleByIdUseCase: GetArticleByIdUseCase
+) : ViewModel() {
+    
+    fun loadArticleDetails(articleId: Long) {
+        viewModelScope.launch {
+            when (val result = getArticleByIdUseCase.getArticleById(articleId)) {
+                is Resource.Success -> {
+                    // Handle successful response
+                    val articleDetail = result.data
+                }
+                is Resource.Error -> {
+                    // Handle error
+                }
+                is Resource.Loading -> {
+                    // Show loading state
+                }
+            }
+        }
+    }
+}
+```

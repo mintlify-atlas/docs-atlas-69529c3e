@@ -1,0 +1,271 @@
+---
+title: Article List
+description: Learn how the article list feature works in Space Flight News, including RecyclerView setup, adapter implementation, and state management.
+---
+
+## Overview
+
+The article list feature displays space flight news articles in a scrollable RecyclerView. It handles loading states, error handling, and provides a foundation for pagination and search functionality.
+
+## Architecture
+
+The article list follows MVVM architecture with clear separation of concerns:
+
+- **ArticlesFragment**: UI layer that displays articles
+- **ArticlesViewModel**: Business logic and state management
+- **ArticleAdapter**: RecyclerView adapter with loading states
+- **GetArticlesUseCase**: Domain layer for fetching articles
+
+## Fragment Implementation
+
+The `ArticlesFragment` is the main UI component that displays the list of articles.
+
+### Key Components
+
+<CodeGroup>
+```kotlin ArticlesFragment.kt:77-88
+private fun setupRecyclerView() {
+    adapter = ArticleAdapter(
+        onItemClicked = { article ->
+            navigateArticlesToArticleDetail(article)
+        }
+    )
+
+    binding.rcvArticles.init(this@ArticlesFragment.adapter, requireContext())
+    binding.rcvArticles.onLoadMoreScrollListener {
+        loadMoreArticle()
+    }
+}
+```
+
+```kotlin ArticlesFragment.kt:98-100
+private fun fetchArticle() {
+    viewModel.fetchArticles()
+}
+```
+
+```kotlin ArticlesFragment.kt:103-107
+private fun observeArticle() {
+    viewModel.articles.observe(viewLifecycleOwner) { resource ->
+        handleResource(resource)
+    }
+}
+```
+</CodeGroup>
+
+### State Management
+
+The fragment handles three main states: Loading, Success, and Error.
+
+```kotlin ArticlesFragment.kt:110-116
+private fun handleResource(resource: Resource<List<Article>>) {
+    when (resource) {
+        is Resource.Error -> showError()
+        is Resource.Loading -> showLoading()
+        is Resource.Success -> loadData(resource.data)
+    }
+}
+```
+
+<Note>
+The `Resource` sealed class provides a type-safe way to handle different states of data loading operations.
+</Note>
+
+### Data Loading
+
+```kotlin ArticlesFragment.kt:119-128
+private fun loadData(articles: List<Article>?) {
+    adapter.submitList(articles)
+
+    if (articles.isNullOrEmpty()) {
+        showWithoutInformation()
+    } else {
+        binding.contentInformation.root.visibility = View.GONE
+        hideLoading()
+    }
+}
+```
+
+## ViewModel Implementation
+
+The `ArticlesViewModel` manages the article list state and business logic.
+
+### Properties
+
+```kotlin ArticlesViewModel.kt:26-30
+private val _articles = MutableLiveData<Resource<List<Article>>>(Resource.Loading())
+val articles: LiveData<Resource<List<Article>>> = _articles
+
+private val _searchQuery = MutableStateFlow("")
+private val _currentList = mutableListOf<Article>()
+```
+
+### Fetching Articles
+
+```kotlin ArticlesViewModel.kt:55-65
+fun fetchArticles(query: String? = null, reload: Boolean = false, loadMore: Boolean = false) {
+    if (!reload && !loadMore && _currentList.isNotEmpty()) return
+
+    if (reload) {
+        _articles.value = Resource.Loading()
+    }
+
+    viewModelScope.launch {
+        handleResult(articleUseCase.getArticles(query ?: onGetSearchQueryChanged()), loadMore)
+    }
+}
+```
+
+<Info>
+The `fetchArticles` method supports three modes:
+- **Initial load**: First time loading articles
+- **Reload**: Refreshing the entire list (e.g., after error)
+- **Load more**: Appending articles for pagination
+</Info>
+
+### Result Handling
+
+```kotlin ArticlesViewModel.kt:72-86
+private fun handleResult(result: Resource<List<Article>>, loadMore: Boolean) {
+    when (result) {
+        is Resource.Success -> {
+            if (!loadMore) {
+                _currentList.clear()
+            }
+
+            _currentList.addAll(result.data ?: listOf())
+            _articles.value = Resource.Success(_currentList.toList())
+        }
+
+        is Resource.Error -> _articles.value = result
+        is Resource.Loading -> _articles.value = Resource.Loading()
+    }
+}
+```
+
+## Adapter Implementation
+
+The `ArticleAdapter` uses `ListAdapter` with `DiffUtil` for efficient updates.
+
+### View Type Handling
+
+```kotlin ArticleAdapter.kt:14-24
+private val viewTypeItem = 0
+private val viewTypeLoading = 1
+private var isLoading = false
+
+override fun getItemViewType(position: Int): Int {
+    return if (position < super.getItemCount()) viewTypeItem else viewTypeLoading
+}
+
+override fun getItemCount(): Int {
+    return super.getItemCount() + if (isLoading) 1 else 0
+}
+```
+
+### Loading State Management
+
+```kotlin ArticleAdapter.kt:54-63
+fun setLoading(isLoading: Boolean) {
+    if (this.isLoading == isLoading) return
+    this.isLoading = isLoading
+
+    if (isLoading) {
+        notifyItemInserted(super.getItemCount())
+    } else {
+        notifyItemRemoved(super.getItemCount())
+    }
+}
+```
+
+<Tip>
+The adapter dynamically adds or removes a loading indicator at the bottom of the list, providing visual feedback during pagination.
+</Tip>
+
+## Domain Model
+
+The `Article` data class represents a news article in the list view.
+
+```kotlin Article.kt:3-9
+data class Article(
+    val id: Long,
+    val title: String,
+    val imageUrl: String,
+    val newsSite: String,
+    val publishedAt: String
+)
+```
+
+## RecyclerView Extensions
+
+The app uses custom extension functions to simplify RecyclerView setup.
+
+```kotlin RecyclerViewExtensions.kt:10-13
+fun RecyclerView.init(adapter: RecyclerView.Adapter<*>, context: Context) {
+    layoutManager = LinearLayoutManager(context)
+    this.adapter = adapter
+}
+```
+
+```kotlin RecyclerViewExtensions.kt:18-28
+fun RecyclerView.onLoadMoreScrollListener(loadMore: () -> Unit) {
+    addOnScrollListener(object : RecyclerView.OnScrollListener() {
+        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+            super.onScrolled(recyclerView, dx, dy)
+
+            if (!recyclerView.canScrollVertically(1)) {
+                loadMore.invoke()
+            }
+        }
+    })
+}
+```
+
+## Navigation
+
+When an article is clicked, the app navigates to the detail screen.
+
+```kotlin ArticlesFragment.kt:168-175
+private fun navigateArticlesToArticleDetail(article: Article) {
+    findNavController().navigate(
+        ArticlesFragmentDirections.actionArticlesFragmentToArticleDetailFragment(
+            articleId = article.id,
+            newsSite = article.newsSite
+        )
+    )
+}
+```
+
+## Error Handling
+
+The app provides visual feedback for errors with a retry button.
+
+```kotlin ArticlesFragment.kt:140-149
+private fun showError() {
+    binding.showState(showError = true)
+    binding.contentInformation.apply {
+        ivInformation.toResourceGlide(requireContext(), R.drawable.error)
+
+        contentError.btnRetry.setOnClickListener {
+            viewModel.fetchArticles(reload = true)
+        }
+    }
+}
+```
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Article Details" icon="file-lines" href="/features/article-details">
+    View detailed information about a specific article
+  </Card>
+  <Card title="Search" icon="magnifying-glass" href="/features/search">
+    Search and filter articles
+  </Card>
+  <Card title="Pagination" icon="list" href="/features/pagination">
+    Load more articles with infinite scrolling
+  </Card>
+  <Card title="Offline Mode" icon="wifi" href="/features/offline-mode">
+    Access articles without internet connection
+  </Card>
+</CardGroup>

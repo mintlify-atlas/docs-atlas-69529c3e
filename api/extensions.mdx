@@ -1,0 +1,194 @@
+---
+title: Extensions
+description: Kotlin extension functions for common Android operations
+---
+
+## Overview
+
+The Space Flight News app provides several Kotlin extension functions to simplify common Android operations. These extensions enhance readability and reduce boilerplate code.
+
+**Package:** `com.bsvillarraga.spaceflightnews.core.extensions`
+
+## Context Extensions
+
+**Source:** [ContextExtensions.kt](~/workspace/source/app/src/main/java/com/bsvillarraga/spaceflightnews/core/extensions/ContextExtensions.kt)
+
+### isPermissionGranted
+
+Checks if a specific permission is granted.
+
+```kotlin
+fun Context.isPermissionGranted(permission: String): Boolean
+```
+
+<ParamField path="permission" type="String" required>
+  The permission string to check (e.g., `Manifest.permission.CAMERA`)
+</ParamField>
+
+**Returns:** `true` if the permission is granted, `false` otherwise
+
+**Example:**
+```kotlin
+if (context.isPermissionGranted(Manifest.permission.POST_NOTIFICATIONS)) {
+    // Send notification
+}
+```
+
+## Date Extensions
+
+**Source:** [DateExtensions.kt](~/workspace/source/app/src/main/java/com/bsvillarraga/spaceflightnews/core/extensions/DateExtensions.kt)
+
+### toFormattedDate
+
+Converts an ISO 8601 date string to a human-readable format.
+
+```kotlin
+fun String.toFormattedDate(): String
+```
+
+**Input Format:** `yyyy-MM-dd'T'HH:mm:ss'Z'` (ISO 8601 UTC)
+
+**Output Format:** `dd/MM/yyyy hh:mm a` (e.g., "04/03/2026 02:30 PM")
+
+**Returns:** Formatted date string, or the original string if parsing fails
+
+**Example:**
+```kotlin
+val isoDate = "2026-03-04T14:30:00Z"
+val formattedDate = isoDate.toFormattedDate()
+// Result: "04/03/2026 02:30 PM"
+```
+
+## Image Extensions
+
+**Source:** [ImageExtensions.kt](~/workspace/source/app/src/main/java/com/bsvillarraga/spaceflightnews/core/extensions/ImageExtensions.kt)
+
+### toResourceGlide
+
+Loads an image from a local resource using Glide. Supports both regular images and GIFs.
+
+```kotlin
+fun ImageView.toResourceGlide(context: Context, image: Int)
+```
+
+<ParamField path="context" type="Context" required>
+  Android context for Glide
+</ParamField>
+
+<ParamField path="image" type="Int" required>
+  Resource ID of the image (e.g., `R.drawable.placeholder`)
+</ParamField>
+
+**Example:**
+```kotlin
+imageView.toResourceGlide(context, R.drawable.loading_animation)
+```
+
+### toNetworkGlide
+
+Loads an image from a URL using Glide.
+
+```kotlin
+fun ImageView.toNetworkGlide(context: Context, image: String)
+```
+
+<ParamField path="context" type="Context" required>
+  Android context for Glide
+</ParamField>
+
+<ParamField path="image" type="String" required>
+  URL of the image to load
+</ParamField>
+
+**Example:**
+```kotlin
+imageView.toNetworkGlide(context, article.imageUrl)
+```
+
+## RecyclerView Extensions
+
+**Source:** [RecyclerViewExtensions.kt](~/workspace/source/app/src/main/java/com/bsvillarraga/spaceflightnews/core/extensions/RecyclerViewExtensions.kt)
+
+### init
+
+Initializes a RecyclerView with a LinearLayoutManager and adapter.
+
+```kotlin
+fun RecyclerView.init(adapter: RecyclerView.Adapter<*>, context: Context)
+```
+
+<ParamField path="adapter" type="RecyclerView.Adapter<*>" required>
+  The adapter to set on the RecyclerView
+</ParamField>
+
+<ParamField path="context" type="Context" required>
+  Context for creating the LinearLayoutManager
+</ParamField>
+
+**Example:**
+```kotlin
+recyclerView.init(articlesAdapter, context)
+```
+
+### onLoadMoreScrollListener
+
+Adds a scroll listener that triggers pagination when the user scrolls to the bottom.
+
+```kotlin
+fun RecyclerView.onLoadMoreScrollListener(loadMore: () -> Unit)
+```
+
+<ParamField path="loadMore" type="() -> Unit" required>
+  Callback function invoked when the user reaches the bottom of the list
+</ParamField>
+
+**Example:**
+```kotlin
+recyclerView.onLoadMoreScrollListener {
+    viewModel.loadNextPage()
+}
+```
+
+## SearchView Extensions
+
+**Source:** [SearchViewExtensions.kt](~/workspace/source/app/src/main/java/com/bsvillarraga/spaceflightnews/core/extensions/SearchViewExtensions.kt)
+
+### queryTextListener
+
+Configures a SearchView with callbacks for query submission and text changes.
+
+```kotlin
+fun SearchView.queryTextListener(
+    onSubmit: (String) -> Unit, 
+    onTextChanged: (String?) -> Unit
+)
+```
+
+<ParamField path="onSubmit" type="(String) -> Unit" required>
+  Callback invoked when the user submits a search query
+</ParamField>
+
+<ParamField path="onTextChanged" type="(String?) -> Unit" required>
+  Callback invoked when the search text is cleared (empty or null)
+</ParamField>
+
+**Example:**
+```kotlin
+searchView.queryTextListener(
+    onSubmit = { query ->
+        viewModel.searchArticles(query)
+    },
+    onTextChanged = { query ->
+        if (query.isNullOrEmpty()) {
+            viewModel.clearSearch()
+        }
+    }
+)
+```
+
+## Dependencies
+
+These extensions use the following libraries:
+- **Glide** - Image loading (for Image extensions)
+- **AndroidX** - Core Android libraries
+- **RecyclerView** - List components

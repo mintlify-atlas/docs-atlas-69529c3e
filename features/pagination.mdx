@@ -1,0 +1,325 @@
+---
+title: Pagination
+description: Understand how infinite scrolling pagination works using PaginationManager and offset-based loading.
+---
+
+## Overview
+
+The pagination feature enables infinite scrolling in the article list, automatically loading more articles as the user scrolls to the bottom. It uses offset-based pagination managed through Room database for state persistence.
+
+## Key Components
+
+- **PaginationManager**: Manages pagination state and offset tracking
+- **Room Database**: Persists current pagination offset
+- **RecyclerView ScrollListener**: Detects when user reaches bottom
+- **Loading Indicator**: Visual feedback during load more
+
+## PaginationManager
+
+The `PaginationManager` handles pagination state and communicates with the local database.
+
+### Class Structure
+
+```kotlin PaginationManager.kt:13
+class PaginationManager @Inject constructor(private val paginationDao: PaginationDao)
+```
+
+### Getting Current Offset
+
+```kotlin PaginationManager.kt:17-19
+suspend fun getCurrentOffset(): Int? {
+    return paginationDao.getPagination()?.offset
+}
+```
+
+<Info>
+The offset represents the starting position for the next batch of articles to load. It's retrieved from the database to maintain state across app sessions.
+</Info>
+
+### Updating Pagination
+
+```kotlin PaginationManager.kt:24-37
+suspend fun updatePagination(paginationDto: PaginationDto) {
+    val offset = extractOffset(paginationDto.next)
+
+    paginationDao.deletePagination()
+
+    if (paginationDto.articles.isNotEmpty()) {
+        paginationDao.insertPagination(
+            PaginationEntity(
+                count = paginationDto.count,
+                offset = offset
+            )
+        )
+    }
+}
+```
+
+<Steps>
+  <Step title="Extract Offset">
+    Parse the next page URL to get the offset parameter
+  </Step>
+  <Step title="Clear Old Data">
+    Delete previous pagination state
+  </Step>
+  <Step title="Save New State">
+    Insert new pagination entity if articles were received
+  </Step>
+</Steps>
+
+### Extracting Offset from URL
+
+```kotlin PaginationManager.kt:42-44
+private fun extractOffset(url: String?): Int? {
+    return url?.let { Uri.parse(it).getQueryParameter("offset")?.toIntOrNull() }
+}
+```
+
+<Note>
+The API returns a `next` URL containing the offset for the next page. The manager extracts this value using Android's Uri parser.
+</Note>
+
+## Database Schema
+
+Pagination state is persisted in Room database.
+
+```kotlin SpaceFlightNewsDb.kt:16-19
+@Database(entities = [PaginationEntity::class], version = 1)
+abstract class SpaceFlightNewsDb: RoomDatabase() {
+    abstract fun paginationDao(): PaginationDao
+}
+```
+
+## Scroll Detection
+
+The app detects when the user reaches the bottom of the list using a custom extension.
+
+### RecyclerView Extension
+
+```kotlin RecyclerViewExtensions.kt:18-28
+fun RecyclerView.onLoadMoreScrollListener(loadMore: () -> Unit) {
+    addOnScrollListener(object : RecyclerView.OnScrollListener() {
+        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+            super.onScrolled(recyclerView, dx, dy)
+
+            if (!recyclerView.canScrollVertically(1)) {
+                loadMore.invoke()
+            }
+        }
+    })
+}
+```
+
+<Tip>
+`canScrollVertically(1)` returns `false` when the RecyclerView cannot scroll down anymore, indicating the user has reached the bottom.
+</Tip>
+
+### Fragment Setup
+
+```kotlin ArticlesFragment.kt:84-88
+binding.rcvArticles.init(this@ArticlesFragment.adapter, requireContext())
+binding.rcvArticles.onLoadMoreScrollListener {
+    loadMoreArticle()
+}
+```
+
+## Load More Implementation
+
+When the user scrolls to the bottom, the fragment triggers loading more articles.
+
+### Fragment Load More
+
+```kotlin ArticlesFragment.kt:91-95
+private fun loadMoreArticle() {
+    if (adapter.itemCount == 0) return
+    adapter.setLoading(true)
+    viewModel.fetchArticles(loadMore = true)
+}
+```
+
+<Warning>
+The method checks if the adapter has items before loading more to prevent loading on empty lists.
+</Warning>
+
+### ViewModel Load More
+
+```kotlin ArticlesViewModel.kt:55-65
+fun fetchArticles(query: String? = null, reload: Boolean = false, loadMore: Boolean = false) {
+    if (!reload && !loadMore && _currentList.isNotEmpty()) return
+
+    if (reload) {
+        _articles.value = Resource.Loading()
+    }
+
+    viewModelScope.launch {
+        handleResult(articleUseCase.getArticles(query ?: onGetSearchQueryChanged()), loadMore)
+    }
+}
+```
+
+### Handling Load More Results
+
+```kotlin ArticlesViewModel.kt:72-86
+private fun handleResult(result: Resource<List<Article>>, loadMore: Boolean) {
+    when (result) {
+        is Resource.Success -> {
+            if (!loadMore) {
+                _currentList.clear()
+            }
+
+            _currentList.addAll(result.data ?: listOf())
+            _articles.value = Resource.Success(_currentList.toList())
+        }
+
+        is Resource.Error -> _articles.value = result
+        is Resource.Loading -> _articles.value = Resource.Loading()
+    }
+}
+```
+
+<Info>
+**Load More vs Reload:**
+- **Load more**: Appends new articles to existing list
+- **Reload**: Clears list and loads from beginning
+</Info>
+
+## Loading Indicator
+
+The adapter displays a loading indicator at the bottom during pagination.
+
+### Adapter Loading State
+
+```kotlin ArticleAdapter.kt:14-24
+private val viewTypeItem = 0
+private val viewTypeLoading = 1
+private var isLoading = false
+
+override fun getItemViewType(position: Int): Int {
+    return if (position < super.getItemCount()) viewTypeItem else viewTypeLoading
+}
+
+override fun getItemCount(): Int {
+    return super.getItemCount() + if (isLoading) 1 else 0
+}
+```
+
+### Setting Loading State
+
+```kotlin ArticleAdapter.kt:54-63
+fun setLoading(isLoading: Boolean) {
+    if (this.isLoading == isLoading) return
+    this.isLoading = isLoading
+
+    if (isLoading) {
+        notifyItemInserted(super.getItemCount())
+    } else {
+        notifyItemRemoved(super.getItemCount())
+    }
+}
+```
+
+## Repository Integration
+
+The repository retrieves the current offset and includes it in API calls.
+
+```kotlin ArticleRepositoryImpl.kt:39-58
+override suspend fun getArticles(
+    query: String?
+): Resource<List<Article>> {
+    return withContext(Dispatchers.IO) {
+        val response: ApiResponse<PaginationDto> =
+            apiHelper.safeApiCall {
+                api.getArticles(query, paginationManager.getCurrentOffset())
+            }
+
+        when (response) {
+            is ApiSuccessResponse -> {
+                val pagination = response.body
+                paginationManager.updatePagination(pagination)
+                Resource.Success(pagination.articles.map { it.toArticleDomain() })
+            }
+
+            is ApiErrorResponse -> Resource.Error(response.code, response.msg, response.error)
+        }
+    }
+}
+```
+
+## Pagination Flow
+
+<Steps>
+  <Step title="User Scrolls">
+    User scrolls to bottom of RecyclerView
+  </Step>
+  <Step title="Trigger Load More">
+    ScrollListener detects bottom and calls `loadMoreArticle()`
+  </Step>
+  <Step title="Show Loading">
+    Adapter adds loading indicator at bottom
+  </Step>
+  <Step title="Get Offset">
+    PaginationManager retrieves current offset from database
+  </Step>
+  <Step title="API Call">
+    Repository makes API call with offset parameter
+  </Step>
+  <Step title="Update Pagination">
+    PaginationManager saves new offset from response
+  </Step>
+  <Step title="Append Articles">
+    ViewModel appends new articles to existing list
+  </Step>
+  <Step title="Hide Loading">
+    Adapter removes loading indicator
+  </Step>
+</Steps>
+
+## Pagination with Search
+
+Pagination works seamlessly with the search feature.
+
+```kotlin ArticlesViewModel.kt:40-47
+private fun observeSearchQuery() {
+    viewModelScope.launch {
+        _searchQuery.debounce(300).distinctUntilChanged().collectLatest { query ->
+            _currentList.clear()
+            fetchArticles(query.ifEmpty { null }, reload = true)
+        }
+    }
+}
+```
+
+<Note>
+When the search query changes, the list is cleared and pagination starts from the beginning with the new query.
+</Note>
+
+## Benefits
+
+<CardGroup cols={2}>
+  <Card title="Infinite Scrolling" icon="infinity">
+    Seamless content loading without pagination buttons
+  </Card>
+  <Card title="State Persistence" icon="floppy-disk">
+    Pagination offset saved in database across sessions
+  </Card>
+  <Card title="Performance" icon="gauge-high">
+    Loads articles in batches instead of all at once
+  </Card>
+  <Card title="Visual Feedback" icon="spinner">
+    Loading indicator shows when fetching more articles
+  </Card>
+</CardGroup>
+
+## Related Features
+
+<CardGroup cols={2}>
+  <Card title="Article List" icon="list" href="/features/article-list">
+    Main list that implements pagination
+  </Card>
+  <Card title="Search" icon="magnifying-glass" href="/features/search">
+    Pagination works with search results
+  </Card>
+  <Card title="Offline Mode" icon="wifi" href="/features/offline-mode">
+    Pagination state persisted for offline access
+  </Card>
+</CardGroup>

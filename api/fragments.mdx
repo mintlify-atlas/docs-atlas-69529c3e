@@ -1,0 +1,391 @@
+---
+title: Fragments
+description: API reference for Fragment classes in Space Flight News app
+---
+
+## ArticlesFragment
+
+`com.bsvillarraga.spaceflightnews.presentation.ui.articles.ArticlesFragment`
+
+Main fragment displaying a searchable list of space flight news articles with pagination and voice search support.
+
+**Inheritance:** Extends `Fragment`, implements `MenuProvider`
+
+**Injection:** Annotated with `@AndroidEntryPoint` for Hilt dependency injection
+
+### Properties
+
+- `binding: FragmentArticlesBinding` - View binding for fragment layout
+- `adapter: ArticleAdapter` - RecyclerView adapter for article list
+- `viewModel: ArticlesViewModel` - ViewModel instance (by viewModels() delegate)
+- `searchView: SearchView?` - Reference to search view in toolbar
+- `searchMenuItem: MenuItem?` - Reference to search menu item
+- `permissionHandler: PermissionHandler` - Handles runtime permissions
+
+### Lifecycle Methods
+
+#### onCreateView()
+
+```kotlin
+override fun onCreateView(
+    inflater: LayoutInflater,
+    container: ViewGroup?,
+    savedInstanceState: Bundle?
+): View
+```
+
+Inflates fragment layout and initializes permission handler.
+
+**Returns:** Root view from FragmentArticlesBinding
+
+**Source:** `ArticlesFragment.kt:52`
+
+#### onViewCreated()
+
+```kotlin
+override fun onViewCreated(view: View, savedInstanceState: Bundle?)
+```
+
+Sets up UI components after view creation:
+1. Configures search menu
+2. Initializes RecyclerView with adapter
+3. Fetches initial articles
+4. Observes article data changes
+
+**Source:** `ArticlesFragment.kt:61`
+
+### Setup Methods
+
+#### setupSearch()
+
+```kotlin
+private fun setupSearch()
+```
+
+Configures search menu provider tied to fragment's view lifecycle.
+
+**Source:** `ArticlesFragment.kt:71`
+
+#### setupRecyclerView()
+
+```kotlin
+private fun setupRecyclerView()
+```
+
+Initializes RecyclerView with:
+- ArticleAdapter with click listener for navigation
+- Load more scroll listener for pagination
+
+**Source:** `ArticlesFragment.kt:77`
+
+### Data Loading
+
+#### fetchArticle()
+
+```kotlin
+private fun fetchArticle()
+```
+
+Performs initial article fetch from ViewModel.
+
+**Source:** `ArticlesFragment.kt:98`
+
+#### loadMoreArticle()
+
+```kotlin
+private fun loadMoreArticle()
+```
+
+Loads additional articles when scrolling to bottom:
+- Checks if adapter has items
+- Shows loading indicator
+- Requests more articles from ViewModel
+
+**Source:** `ArticlesFragment.kt:91`
+
+#### observeArticle()
+
+```kotlin
+private fun observeArticle()
+```
+
+Observes ViewModel's articles LiveData and handles resource states.
+
+**Source:** `ArticlesFragment.kt:103`
+
+### UI State Management
+
+#### handleResource()
+
+```kotlin
+private fun handleResource(resource: Resource<List<Article>>)
+```
+
+Processes article resource states:
+- `Resource.Error` → Shows error state
+- `Resource.Loading` → Shows loading animation
+- `Resource.Success` → Loads data into adapter
+
+**Source:** `ArticlesFragment.kt:110`
+
+#### loadData()
+
+```kotlin
+private fun loadData(articles: List<Article>?)
+```
+
+Submits article list to adapter. Shows "no information" state if list is empty.
+
+**Source:** `ArticlesFragment.kt:119`
+
+#### showLoading(), hideLoading(), showError(), showWithoutInformation()
+
+Utility methods for managing different UI states with appropriate animations and error handling.
+
+**Sources:** `ArticlesFragment.kt:152-165`
+
+### Navigation
+
+#### navigateArticlesToArticleDetail()
+
+```kotlin
+private fun navigateArticlesToArticleDetail(article: Article)
+```
+
+Navigates to article detail screen using Navigation Component with Safe Args.
+
+**Parameters:**
+- `article` - Selected article to display
+
+**Passes:**
+- `articleId` - Article ID
+- `newsSite` - News site name for toolbar title
+
+**Source:** `ArticlesFragment.kt:168`
+
+### Menu Implementation
+
+#### onCreateMenu()
+
+```kotlin
+override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater)
+```
+
+Inflates search menu and configures:
+- SearchView with query hint
+- Text change listener for real-time search
+- Submit listener for search execution
+
+**Source:** `ArticlesFragment.kt:177`
+
+#### onMenuItemSelected()
+
+```kotlin
+override fun onMenuItemSelected(menuItem: MenuItem): Boolean
+```
+
+Handles menu item selection, specifically voice search action.
+
+**Returns:** true if handled, false otherwise
+
+**Source:** `ArticlesFragment.kt:194`
+
+### Voice Search
+
+#### requestRecordAudio()
+
+```kotlin
+private fun requestRecordAudio()
+```
+
+Requests RECORD_AUDIO permission using PermissionChainManager before starting voice search.
+
+**Source:** `ArticlesFragment.kt:206`
+
+#### startVoiceSearch()
+
+```kotlin
+private fun startVoiceSearch()
+```
+
+Launches Android speech recognition with:
+- Free-form language model
+- Custom prompt
+- Exception handling for unsupported devices
+
+**Source:** `ArticlesFragment.kt:220`
+
+#### voiceSearchLauncher
+
+```kotlin
+private val voiceSearchLauncher = 
+    registerForActivityResult(ActivityResultContracts.StartActivityForResult())
+```
+
+ActivityResultLauncher that processes voice search results:
+- Extracts spoken text
+- Expands SearchView
+- Sets query and triggers search
+
+**Source:** `ArticlesFragment.kt:240`
+
+---
+
+## ArticleDetailFragment
+
+`com.bsvillarraga.spaceflightnews.presentation.ui.articles.ArticleDetailFragment`
+
+Fragment displaying detailed information about a single article.
+
+**Inheritance:** Extends `Fragment`
+
+**Injection:** Annotated with `@AndroidEntryPoint` for Hilt dependency injection
+
+### Properties
+
+- `articleId: Long` - ID of article to display (from navigation arguments)
+- `titleToolbar: String?` - News site name for toolbar title
+- `binding: FragmentArticleDetailsBinding` - View binding
+- `viewModel: ArticleDetailsViewModel` - ViewModel instance
+
+### Lifecycle Methods
+
+#### onCreate()
+
+```kotlin
+override fun onCreate(savedInstanceState: Bundle?)
+```
+
+Extracts navigation arguments:
+- `articleId` - Article ID (default: -1L)
+- `newsSite` - News site name for toolbar
+
+Returns early if arguments are invalid.
+
+**Source:** `ArticleDetailFragment.kt:32`
+
+#### onCreateView()
+
+```kotlin
+override fun onCreateView(
+    inflater: LayoutInflater,
+    container: ViewGroup?,
+    savedInstanceState: Bundle?
+): View
+```
+
+Inflates fragment layout.
+
+**Returns:** Root view from FragmentArticleDetailsBinding
+
+**Source:** `ArticleDetailFragment.kt:45`
+
+#### onViewCreated()
+
+```kotlin
+override fun onViewCreated(view: View, savedInstanceState: Bundle?)
+```
+
+Initializes UI:
+1. Sets toolbar title
+2. Fetches article details
+3. Observes article data
+
+**Source:** `ArticleDetailFragment.kt:53`
+
+### Setup Methods
+
+#### setupToolbar()
+
+```kotlin
+private fun setupToolbar()
+```
+
+Sets ActionBar title to news site name.
+
+**Source:** `ArticleDetailFragment.kt:63`
+
+### Data Loading
+
+#### fetchArticle()
+
+```kotlin
+private fun fetchArticle()
+```
+
+Fetches article details by ID with reload flag set to true.
+
+**Source:** `ArticleDetailFragment.kt:68`
+
+#### observeArticle()
+
+```kotlin
+private fun observeArticle()
+```
+
+Observes ViewModel's article LiveData and handles resource states.
+
+**Source:** `ArticleDetailFragment.kt:73`
+
+### UI State Management
+
+#### handleResource()
+
+```kotlin
+private fun handleResource(resource: Resource<ArticleDetail>)
+```
+
+Processes article detail resource states:
+- `Resource.Error` → Shows error state with retry
+- `Resource.Loading` → Shows loading animation
+- `Resource.Success` → Loads article data into UI
+
+**Source:** `ArticleDetailFragment.kt:80`
+
+#### loadData()
+
+```kotlin
+private fun loadData(article: ArticleDetail?)
+```
+
+Populates UI with article details:
+- Title, published date, authors
+- Summary/content
+- Header image using Glide
+- "Continue Reading" button with URL handler
+
+**Source:** `ArticleDetailFragment.kt:89`
+
+#### showLoading(), hideLoading(), showError()
+
+Utility methods for UI state transitions with appropriate animations.
+
+**Sources:** `ArticleDetailFragment.kt:118-144`
+
+### User Actions
+
+#### openWebPage()
+
+```kotlin
+private fun openWebPage(url: String)
+```
+
+Opens article URL in external browser:
+- Creates Intent with ACTION_VIEW
+- Checks for available browser
+- Shows toast if no browser found
+
+**Parameters:**
+- `url` - Article URL to open
+
+**Source:** `ArticleDetailFragment.kt:147`
+
+#### showToast()
+
+```kotlin
+private fun showToast(msg: String)
+```
+
+Displays short Toast message.
+
+**Source:** `ArticleDetailFragment.kt:157`
