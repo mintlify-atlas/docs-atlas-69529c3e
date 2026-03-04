@@ -1,0 +1,110 @@
+{
+  "projectType": "frontend",
+  "projectName": "Space Flight News",
+  "projectDescription": "Android app for browsing space flight news articles with search, pagination, and offline caching",
+  "theme": "palm",
+  "primaryColor": "#1E3A8A",
+  "lightColor": "#3B82F6",
+  "darkColor": "#1E40AF",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/clean-architecture",
+              "architecture/dependency-injection"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/article-list",
+              "features/article-details",
+              "features/search",
+              "features/pagination",
+              "features/offline-mode"
+            ]
+          },
+          {
+            "group": "Components",
+            "pages": [
+              "components/data-layer",
+              "components/domain-layer",
+              "components/presentation-layer"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Data Layer",
+            "pages": [
+              "api/repository",
+              "api/api-client",
+              "api/models"
+            ]
+          },
+          {
+            "group": "Domain Layer",
+            "pages": [
+              "api/use-cases",
+              "api/domain-models"
+            ]
+          },
+          {
+            "group": "Presentation Layer",
+            "pages": [
+              "api/viewmodels",
+              "api/fragments",
+              "api/adapters"
+            ]
+          },
+          {
+            "group": "Core Utilities",
+            "pages": [
+              "api/resource",
+              "api/network-helper",
+              "api/extensions"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Clean architecture with separation of concerns (data/domain/presentation)",
+    "Article browsing with infinite scroll pagination",
+    "Real-time search with debouncing",
+    "Offline caching with Room database",
+    "Dependency injection with Dagger Hilt",
+    "MVVM pattern with ViewModels and LiveData",
+    "Navigation component for screen transitions",
+    "Image loading with Glide"
+  ],
+  "publicApiSurface": [
+    "ArticlesApiClient.getArticles(query, offset, limit, sort)",
+    "ArticlesApiClient.getArticleById(articleId)",
+    "ArticleRepository.getArticles(query)",
+    "ArticleRepository.getArticleById(articleId)",
+    "GetArticlesUseCase.getArticles(query)",
+    "GetArticleByIdUseCase.getArticleById(articleId)",
+    "ArticlesViewModel.fetchArticles(query, reload, loadMore)",
+    "ArticlesViewModel.onSearchQueryChanged(query)",
+    "ArticleDetailsViewModel.getArticleDetails(articleId)",
+    "PaginationManager.getCurrentOffset()",
+    "PaginationManager.updatePagination(paginationDto)",
+    "Resource.Success<T>(data)",
+    "Resource.Error<T>(code, msg, error)",
+    "Resource.Loading<T>(data)"
+  ]
+}
